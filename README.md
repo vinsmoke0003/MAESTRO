@@ -1,4 +1,5 @@
-# Project FRIDAY
+# Project
+ 
 
 **Official Title:** Design and Evaluation of a Safe Multi-Agent System for Natural Language-Driven Desktop Task Automation
 
