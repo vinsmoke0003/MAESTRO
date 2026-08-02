@@ -1,9 +1,8 @@
-# Project
- 
+# Project MAESTRO
 
 **Official Title:** Design and Evaluation of a Safe Multi-Agent System for Natural Language-Driven Desktop Task Automation
 
-**Codename:** FRIDAY — *Framework for Reliable, Instruction-Driven Automation with Yielding-to-human oversight*
+**Codename:** MAESTRO — *Framework for Reliable, Instruction-Driven Automation with Yielding-to-human oversight*
 
 | | |
 |---|---|
@@ -70,9 +69,9 @@ You chose Windows + macOS. That is defensible and it strengthens the report — 
 ## Repository Layout (to be created in Week 2)
 
 ```
-friday/
+maestro/
 ├── docs/                    # These documents + generated diagrams
-├── friday/
+├── maestro/
 │   ├── nlp/                 # Intent classification, entity extraction
 │   ├── planner/             # LLM planner → Action IR
 │   ├── safety/              # Policy engine, risk scoring, dry-run  ★ novelty
