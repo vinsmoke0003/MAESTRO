@@ -43,8 +43,35 @@ counts, approve it, and can then verify the audit hash chain.
 3. **Editing the audit log is detectable** — the hash chain breaks
    (`test_audit_tampering_is_detected`).
 
+## v0.2 — the planner and the learning loop
+
+```bash
+python -m maestro.cli ask move the pdfs from inbox to archive
+python -m maestro.cli learn     # episode stats + export training candidates
+```
+
+`ask` is the full pipeline: English → local LLM (constrained JSON decoding,
+verb enum = the closed registry) → IR validation → deterministic risk scoring
+→ dry-run preview → consent → execution → **episode recorded**.
+
+The learning loop (how MAESTRO "learns you" over time):
+
+```
+use `ask` daily → episodes accumulate → `learn` exports JSONL candidates
+   → human review/labeling → LoRA fine-tune (docs/05) → swap in the
+   fine-tuned model via MAESTRO_MODEL → planner now knows your patterns → …
+```
+
+Model selection: `MAESTRO_MODEL` env var (default `qwen2.5:7b-instruct-q4_K_M`).
+
+**Known issue for the dataset design** (deliberate, documented): a refused
+unsafe instruction currently exports as a "completed" episode. Before any
+training run, candidates must be labeled with `expected_behavior`
+(execute / clarify / refuse — docs/05 §2) so refusals teach refusal, not
+compliance. This is the human-verification step; it is not optional.
+
 ## Next (per docs/04-ROADMAP.md Track B)
 
-- Week 5–6: planner v0 — local Qwen via Ollama with constrained JSON decoding,
-  emitting these same plans from natural language
-- then: `search.*` verbs, `browser.*` via Playwright, voice I/O
+- `search.*` verbs, then `browser.*` via Playwright
+- Week 8: voice I/O — faster-whisper STT in, Piper TTS out, wrapping this
+  same pipeline (nothing else changes; `ask` just gains a microphone)
