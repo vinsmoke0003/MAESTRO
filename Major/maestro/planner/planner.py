@@ -52,7 +52,11 @@ def _decode_schema() -> dict:
                         "produces": {"type": ["string", "null"]},
                         "rationale": {"type": "string"},
                     },
-                    "required": ["action_id", "verb", "args", "rationale"],
+                    # produces/depends_on are REQUIRED (nullable/empty) so the
+                    # decoder forces the model to state its dataflow explicitly —
+                    # qwen2.5 otherwise omits produces and emits dangling $refs.
+                    "required": ["action_id", "verb", "args", "depends_on",
+                                 "produces", "rationale"],
                 },
             }
         },
@@ -81,8 +85,10 @@ Available verbs (use ONLY these):
 
 Rules:
 - action_id: a1, a2, ... in order.
-- Reference an earlier action's output with "$name" where that action set "produces": "name",
-  and list that action in depends_on.
+- Reference an earlier action's output with "$name" — the earlier action MUST
+  set "produces": "name" and be listed in this action's depends_on. Every "$name"
+  you write requires a matching "produces". Set "produces": null when no later
+  action needs the output.
 - Use absolute paths under the user's home directory shown in the context.
 - Prefer the fewest actions that fully satisfy the instruction. Do not add
   extra cleanup, deletion, or organization the user did not ask for.
