@@ -1,6 +1,6 @@
 # 03 — Zero-Cost Tech Stack & Setup
 
-**Project FRIDAY** · v1.0 · Target machine: **Apple M2 Pro, 16 GB, macOS 26.5**
+**Project MAESTRO** · v1.0 · Target machine: **Apple M2 Pro, 16 GB, macOS 26.5**
 
 > **Accuracy note.** Free-tier limits change without notice and my information has a cutoff. Every quota below is marked with a confidence level. **Verify the ones you depend on during Week 2 and record the actual observed limits in `docs/cost-log.md`.** That log is also a report artifact — a table of "advertised vs. observed free-tier limits, measured over 12 weeks" is a genuinely useful contribution to anyone replicating your work.
 
@@ -36,7 +36,7 @@ Ollama is installed but not running (`could not connect to a running Ollama inst
 | Cloud fallback + baseline | Gemini / Groq / OpenRouter free tiers | Free tier | Frontier upper-bound for evaluation only |
 | STT | **faster-whisper** (`base.en` / `small.en`) | Free, OSS | Runs locally, real-time on M2 Pro |
 | TTS | **Piper** | Free, OSS | Local neural TTS, low latency, good voices |
-| Wake word | **openWakeWord** | Free, OSS | Custom "Hey Friday" model trainable for free |
+| Wake word | **openWakeWord** | Free, OSS | Custom "Hey MAESTRO" model trainable for free |
 | Orchestration | **LangGraph** | Free, OSS | Stateful DAG graphs; matches your synopsis |
 | Validation | **Pydantic v2** | Free, OSS | The Action IR schema and its guarantees |
 | Browser | **Playwright** | Free, OSS | Cross-platform, reliable selectors, headed/headless |
@@ -128,7 +128,7 @@ macOS will silently no-op automation calls if permissions aren't granted, which 
 - **Full Disk Access** → add your terminal *only if* you need to reach protected locations. Prefer not to — a narrower permission set is a better story for a safety project, and you should say so in the report.
 - **Screen Recording** → only if you implement screenshot-based grounding (P2, probably skip).
 
-Note in your report that FRIDAY deliberately operates with the *minimum* permission set that supports its verb registry. That is a genuine security property, and it is free — you get it by not asking for Full Disk Access.
+Note in your report that MAESTRO deliberately operates with the *minimum* permission set that supports its verb registry. That is a genuine security property, and it is free — you get it by not asking for Full Disk Access.
 
 ---
 
@@ -190,7 +190,7 @@ models/
 *.safetensors
 .DS_Store
 chroma_db/
-friday.db
+maestro.db
 ```
 
 Branch protection isn't needed for a 3-person team, but do adopt one convention: **feature branches + PRs, even trivial ones.** Not for process theatre — because a year from now the PR history is the evidence of individual contribution, and viva panels ask who wrote what.
@@ -200,8 +200,8 @@ Add this CI check in Week 2 (`.github/workflows/ci.yml`) to enforce the cross-pl
 ```yaml
 - name: No platform branching outside executors
   run: |
-    ! grep -rn "sys.platform\|platform.system()" friday/ \
-      --include="*.py" | grep -v "friday/executor/"
+    ! grep -rn "sys.platform\|platform.system()" maestro/ \
+      --include="*.py" | grep -v "maestro/executor/"
 ```
 
 It costs nothing today and saves the architecture in month four.

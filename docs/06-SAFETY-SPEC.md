@@ -1,6 +1,6 @@
 # 06 — Safety Layer Specification
 
-**Project FRIDAY** · v1.0
+**Project MAESTRO** · v1.0
 
 > **This document is the project's research contribution.** Everything else — the planner, the executors, the voice interface — exists so that this layer has something to govern. If you read only one document twice, read this one.
 
@@ -32,7 +32,7 @@ Four tiers. Two orthogonal factors: **severity** of the effect and **reversibili
 
 | Tier | Name | Definition | Policy | Examples |
 |---|---|---|---|---|
-| **R0** | SAFE | No state change outside FRIDAY's process. Pure reads. | Auto-execute, log only | `fs.glob`, `fs.read_text`, `sys.info`, `search.*`, `browser.extract` |
+| **R0** | SAFE | No state change outside MAESTRO's process. Pure reads. | Auto-execute, log only | `fs.glob`, `fs.read_text`, `sys.info`, `search.*`, `browser.extract` |
 | **R1** | LOW | Reversible change confined to the declared workspace | Auto-execute, log, push undo | `fs.mkdir`, `fs.copy` (within workspace), `app.launch`, `sys.set_volume` |
 | **R2** | MEDIUM | Reversible but consequential, **or** any write outside the workspace, **or** any external network write | **Explicit confirmation** + undo | `fs.move`, `fs.trash`, `browser.fill`, `browser.download`, `draft.email` |
 | **R3** | HIGH | Irreversible, externally visible, or security-relevant | **Typed confirmation**; several verbs **hard-blocked outright** | `fs.delete_permanent`, `email.send`, credential entry, purchases, `sudo` |
@@ -67,7 +67,7 @@ Three properties to state and defend in the report:
 ### Path policy
 
 ```python
-ALLOWLIST = ["~/Desktop", "~/Documents", "~/Downloads", "~/Pictures", "~/friday_workspace"]
+ALLOWLIST = ["~/Desktop", "~/Documents", "~/Downloads", "~/Pictures", "~/maestro_workspace"]
 DENYLIST  = ["~/.ssh", "~/.aws", "~/.config", "~/Library/Keychains", "~/.gnupg",
              "/System", "/Library", "/etc", "/var", "/usr", "C:\\Windows",
              "C:\\Program Files", "%APPDATA%", "*.key", "*.pem", "id_rsa*",
@@ -83,7 +83,7 @@ Denylist is checked first and wins. Paths are canonicalized (`realpath`) **befor
 Consent is meaningless if the user cannot see what they are approving. The dry run executes the entire plan against a **simulated filesystem/browser state** and produces an effect manifest, with zero real side effects.
 
 ```
-FRIDAY will perform 3 actions:
+MAESTRO will perform 3 actions:
 
   1. Find PDFs in ~/Downloads                                    [R0 safe]
      → 47 files, 312 MB
@@ -165,7 +165,7 @@ Report **which control fires first** for each of your 40 adversarial cases. A ta
 
 **Put this section in the report, near the front, in your own words.** Stating limitations before an examiner finds them is the difference between a defence and a collapse — and it is also simply the honest thing to do.
 
-FRIDAY is **not** "fully safe," and no LLM-driven agent with filesystem and browser access can be. Specifically:
+MAESTRO is **not** "fully safe," and no LLM-driven agent with filesystem and browser access can be. Specifically:
 
 - **No formal verification.** No proof of correctness or of safety. Our guarantees are empirical, measured on a benchmark we designed, and therefore bounded by that benchmark's coverage.
 - **The allowlist is a policy, not a sandbox.** A bug in an executor could still touch a denied path. True isolation would require OS-level sandboxing (containers, seatbelt profiles, AppArmor) — named in Future Work.
@@ -175,4 +175,4 @@ FRIDAY is **not** "fully safe," and no LLM-driven agent with filesystem and brow
 - **The planner can still be wrong.** Safety controls limit the *blast radius* of a bad plan. They do not make plans correct.
 - **A malicious user is out of scope.** The threat model assumes an authorized user and an untrusted environment — not an adversarial operator.
 
-The honest summary, and the one to put in your abstract: *FRIDAY does not make desktop automation safe. It makes it **auditable, reversible, consent-gated, and injection-resistant** — four properties we define operationally and measure.* That sentence is defensible under hostile questioning. "Fully safe" is not, and the difference will be worth marks.
+The honest summary, and the one to put in your abstract: *MAESTRO does not make desktop automation safe. It makes it **auditable, reversible, consent-gated, and injection-resistant** — four properties we define operationally and measure.* That sentence is defensible under hostile questioning. "Fully safe" is not, and the difference will be worth marks.

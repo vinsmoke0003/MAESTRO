@@ -1,6 +1,6 @@
 # 01 — Product Requirements Document
 
-**Project FRIDAY** · Group 298 · v1.0 · Week 2, 7th Semester
+**Project MAESTRO** · Group 298 · v1.0 · Week 2, 7th Semester
 
 ---
 
@@ -75,7 +75,7 @@ Priya is who the system is designed for. Arjun is who will find the bugs. The th
 | T1 | **File & folder management** | "Move all PDFs from Downloads to Documents/Invoices, sorted by month" | ✅ P0 | ✅ P0 |
 | T2 | **Search & retrieval** | "Find the presentation I edited last Tuesday" | ✅ P0 | ✅ P0 |
 | T3 | **Browser automation** | "Open my college portal and download this week's timetable" | ✅ P0 | ✅ P0 |
-| T4 | **Application control** | "Open VS Code in the friday folder and start the dev server" | ✅ P1 | ✅ P1 |
+| T4 | **Application control** | "Open VS Code in the maestro folder and start the dev server" | ✅ P1 | ✅ P1 |
 | T5 | **System information & settings** | "How much disk space is left?" / "Set volume to 30%" | ✅ P1 | ✅ P1 |
 | T6 | **Composition & drafting** | "Draft an email to my guide summarizing this week's progress" (**draft only — never send**) | ✅ P1 | ✅ P1 |
 
@@ -98,7 +98,7 @@ Priority: **M** = must (7th sem), **S** = should (8th sem), **C** = could (stret
 |---|---|---|
 | FR-01 | Accept typed natural-language instructions via UI | M |
 | FR-02 | Accept spoken instructions via local STT, no cloud | M |
-| FR-03 | Wake-word activation ("Hey Friday") with local always-on detection | S |
+| FR-03 | Wake-word activation ("Hey MAESTRO") with local always-on detection | S |
 | FR-04 | Classify instruction into one of N intents with a confidence score | M |
 | FR-05 | Extract typed entities: paths, filetypes, dates, apps, quantities, recipients | M |
 | FR-06 | Ask a clarifying question when confidence < threshold or a required slot is unfilled | M |

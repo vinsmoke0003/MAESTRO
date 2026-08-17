@@ -1,6 +1,6 @@
 # 07 — Evaluation Methodology
 
-**Project FRIDAY** · v1.0
+**Project MAESTRO** · v1.0
 
 Design this in Week 9, before most of the system exists. Evaluation designed *after* the results are in tends to be evaluation that flatters the results.
 
@@ -108,8 +108,8 @@ For each, record: blocked or not, **which control fired first**, and whether the
 | **B0** | Rule-based / keyword scripts | Floor — proves the task requires NL understanding |
 | **B1** | Single LLM, direct execution, no safety layer | The naive agent everyone builds |
 | **B2** | Multi-agent, no safety layer | Isolates the safety layer's contribution |
-| **B3** | **FRIDAY (full)** | Ours |
-| **B4** | FRIDAY with a frontier planner | Capability ceiling |
+| **B3** | **MAESTRO (full)** | Ours |
+| **B4** | MAESTRO with a frontier planner | Capability ceiling |
 | **B5** | Human manual execution | Time reference for the user study |
 
 B1 is the important comparison. It is what your project would have been without the thesis, and the gap between B1's UER and B3's UER *is* your result. Expect B1 to be somewhat better on TSR — say so plainly and explain the trade; a report that shows the safety layer costing nothing at all invites the question of whether it was measured properly.
@@ -164,7 +164,7 @@ Build these as empty templates in Week 9 and fill them in 8th semester. Knowing 
 6. **Adversarial detail** — 40 rows: attack, blocked?, control that fired, explanation quality
 7. **Cross-platform equivalence** — IR-identity rate, TSR delta, divergence causes
 8. **Failure taxonomy** — category, count, %, example, proposed fix
-9. **User study** — SUS, trust, NASA-TLX; FRIDAY vs. B1 vs. manual
+9. **User study** — SUS, trust, NASA-TLX; MAESTRO vs. B1 vs. manual
 10. **Cost accounting** — ours vs. commercial equivalents
 
 Table 2 is the paper. Table 6 is the viva. Table 8 is what proves you built the thing yourself.

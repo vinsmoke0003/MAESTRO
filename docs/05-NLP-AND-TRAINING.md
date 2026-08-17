@@ -1,6 +1,6 @@
 # 05 — NLP Layer, Dataset & Fine-Tuning
 
-**Project FRIDAY** · v1.0
+**Project MAESTRO** · v1.0
 
 This is your **ML contribution** — the part that makes it a CSE research project rather than an integration exercise. When you chose "fine-tune a small model on intent→plan pairs," you chose the option that produces a real artifact (a dataset), a real experiment (does fine-tuning a 3B model close the gap to a frontier model?), and a real result. Treat this document as the plan for the thing your paper will actually be about.
 
@@ -162,7 +162,7 @@ Keep it identical between training and inference. A format mismatch here is the 
 
 ```
 <|im_start|>system
-You are FRIDAY's planner. Convert the instruction into a JSON Action IR plan.
+You are MAESTRO's planner. Convert the instruction into a JSON Action IR plan.
 You may only use verbs from this registry: {verb_registry}
 Respond with JSON only.<|im_end|>
 <|im_start|>user

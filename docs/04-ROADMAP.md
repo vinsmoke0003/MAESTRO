@@ -1,6 +1,6 @@
 # 04 — Roadmap: 28 Weeks, Two Parallel Tracks
 
-**Project FRIDAY** · v1.0
+**Project MAESTRO** · v1.0
 
 ---
 
@@ -82,7 +82,7 @@ The **Deliverable** column is written to be paste-able into your WPR.
 - Draft §2.1–2.3 of the report as you go. **Write while reading, not after.** The version of you in Week 11 will not remember why paper #17 mattered.
 
 ### Track B
-- Define the **Action IR** as Pydantic models (`friday/ir/`).
+- Define the **Action IR** as Pydantic models (`maestro/ir/`).
 - Implement the **verb registry** with a decorator-based registration pattern.
 - Write JSON Schema export + a round-trip test.
 
@@ -331,6 +331,6 @@ Fixed schema — do not improvise per paper, or the matrix won't be comparable.
 | Reported metrics | — |
 | Safety metrics reported | **Usually "none" — this column is your gap** |
 | Limitation (their words) | — |
-| Relevance to FRIDAY | 1–5 |
+| Relevance to MAESTRO | 1–5 |
 
 The five bolded columns are the argument. When you fill this matrix and those columns are overwhelmingly "N" while the capability columns are rich, the gap analysis writes itself — and it is defensible because it is *observed*, not asserted.

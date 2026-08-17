@@ -1,6 +1,6 @@
 # 08 — Team, Deliverables & Risk Register
 
-**Project FRIDAY** · v1.0
+**Project MAESTRO** · v1.0
 
 ---
 

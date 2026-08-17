@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# local editor/agent settings
+.claude/settings.local.json
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# secrets & local state
+.env
+maestro_audit.db
+chroma_db/
+
+# models & large artifacts — reproducible, never committed
+*.gguf
+*.safetensors
+models/
