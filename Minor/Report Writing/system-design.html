@@ -1,0 +1,435 @@
+<title>MAESTRO Architecture Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --ink: #25303b;
+    --muted: #5c6a78;
+    --line: #3d4a57;
+    --edge: #4a5866;
+    --badge-fill: #fde5e5;
+    --badge-stroke: #dd6a6a;
+    --badge-text: #b03d3d;
+    --safety-fill: #fdeecb;
+    --safety-stroke: #f0a63c;
+    --trust-fill: #edf3fb;
+    --trust-stroke: #7d9fc9;
+    --untrust-fill: #fbeeee;
+    --untrust-stroke: #d08b8b;
+    --green-fill: #ecf7ec;
+    --green-stroke: #6fa86f;
+    --zone-fill: #f2f2ee;
+    --zone-stroke: #9aa3ab;
+    --cyl-fill: #f4f5f2;
+    --table-stripe: #f3f4f0;
+    --halo: #fafaf7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161b21;
+      --surface: #1e252d;
+      --ink: #e3e8ec;
+      --muted: #96a2ad;
+      --line: #aab6c0;
+      --edge: #8d9aa6;
+      --badge-fill: #452626;
+      --badge-stroke: #d97b7b;
+      --badge-text: #eda3a3;
+      --safety-fill: #40331a;
+      --safety-stroke: #e8a63e;
+      --trust-fill: #1e2936;
+      --trust-stroke: #5f83ab;
+      --untrust-fill: #342224;
+      --untrust-stroke: #b07575;
+      --green-fill: #1f2f1f;
+      --green-stroke: #75a875;
+      --zone-fill: #20262c;
+      --zone-stroke: #5a636b;
+      --cyl-fill: #232b33;
+      --table-stripe: #1b2128;
+      --halo: #161b21;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161b21;
+    --surface: #1e252d;
+    --ink: #e3e8ec;
+    --muted: #96a2ad;
+    --line: #aab6c0;
+    --edge: #8d9aa6;
+    --badge-fill: #452626;
+    --badge-stroke: #d97b7b;
+    --badge-text: #eda3a3;
+    --safety-fill: #40331a;
+    --safety-stroke: #e8a63e;
+    --trust-fill: #1e2936;
+    --trust-stroke: #5f83ab;
+    --untrust-fill: #342224;
+    --untrust-stroke: #b07575;
+    --green-fill: #1f2f1f;
+    --green-stroke: #75a875;
+    --zone-fill: #20262c;
+    --zone-stroke: #5a636b;
+    --cyl-fill: #232b33;
+    --table-stripe: #1b2128;
+    --halo: #161b21;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 2.5rem 1.5rem 4rem;
+    line-height: 1.55;
+  }
+  main { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+
+  header .sheetno {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 { font-size: 1.7rem; font-weight: 700; margin: .2rem 0 .3rem; text-wrap: balance; }
+  header p { max-width: 65ch; margin: 0; color: var(--muted); }
+
+  .sheet {
+    background: var(--surface);
+    border: 1px solid var(--zone-stroke);
+    border-radius: 10px;
+    overflow-x: auto;
+    padding: 1rem;
+  }
+  .sheet svg { min-width: 1560px; display: block; }
+
+  /* SVG classes */
+  .box   { fill: var(--surface); stroke: var(--line); stroke-width: 1.6; rx: 8; }
+  .zone-trust   { fill: var(--trust-fill);   stroke: var(--trust-stroke);   stroke-width: 1.4; stroke-dasharray: 7 4; }
+  .zone-untrust { fill: var(--untrust-fill); stroke: var(--untrust-stroke); stroke-width: 1.4; stroke-dasharray: 7 4; }
+  .zone-plain   { fill: var(--zone-fill);    stroke: var(--zone-stroke);    stroke-width: 1.3; }
+  .zone-opt     { fill: none;                stroke: var(--zone-stroke);    stroke-width: 1.3; stroke-dasharray: 5 4; }
+  .box-safety { fill: var(--safety-fill); stroke: var(--safety-stroke); stroke-width: 2.6; }
+  .box-green  { fill: var(--green-fill);  stroke: var(--green-stroke);  stroke-width: 1.8; }
+  .box-sub    { fill: var(--surface); stroke: var(--line); stroke-width: 1.3; }
+  .cyl-body { fill: var(--cyl-fill); stroke: var(--line); stroke-width: 1.4; }
+  .cyl-top  { fill: var(--cyl-fill); stroke: var(--line); stroke-width: 1.4; }
+
+  .t       { font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px; font-weight: 600; fill: var(--ink); }
+  .t-sub   { font-family: "IBM Plex Sans", sans-serif; font-size: 11px;  font-weight: 400; fill: var(--muted); }
+  .t-zone  { font-family: "IBM Plex Mono", monospace;  font-size: 11px;  font-weight: 500; fill: var(--muted); letter-spacing: .08em; }
+  .t-badge { font-family: "IBM Plex Mono", monospace;  font-size: 12px;  font-weight: 500; fill: var(--badge-text); }
+  .badge   { fill: var(--badge-fill); stroke: var(--badge-stroke); stroke-width: 1.5; }
+
+  .edge        { stroke: var(--edge); stroke-width: 1.6; fill: none; }
+  .edge-dash   { stroke: var(--edge); stroke-width: 1.5; fill: none; stroke-dasharray: 6 4; }
+  .edge-taint  { stroke: var(--untrust-stroke); stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; }
+  .el {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: var(--ink);
+    paint-order: stroke; stroke: var(--halo); stroke-width: 4px; stroke-linejoin: round;
+  }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; font-size: .85rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: .45rem; }
+  .sw { width: 22px; height: 13px; border-radius: 3px; display: inline-block; border: 1.6px solid; flex: none; }
+  .sw-safety  { background: var(--safety-fill);  border-color: var(--safety-stroke); }
+  .sw-trust   { background: var(--trust-fill);   border-color: var(--trust-stroke);  border-style: dashed; }
+  .sw-untrust { background: var(--untrust-fill); border-color: var(--untrust-stroke); border-style: dashed; }
+  .sw-green   { background: var(--green-fill);   border-color: var(--green-stroke); }
+  .sw-opt     { background: transparent;         border-color: var(--zone-stroke);  border-style: dashed; }
+  .sw-badge   { background: var(--badge-fill);   border-color: var(--badge-stroke); border-radius: 50%; width: 15px; height: 15px; }
+
+  h2 { font-size: 1.05rem; margin: 0 0 .6rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+  th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--zone-fill); vertical-align: top; }
+  th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  tbody tr:nth-child(odd) { background: var(--table-stripe); }
+  td.n { font-family: "IBM Plex Mono", monospace; white-space: nowrap; color: var(--badge-text); font-weight: 500; }
+  .tablewrap { overflow-x: auto; }
+  footer { font-size: .8rem; color: var(--muted); }
+</style>
+
+<main>
+  <header>
+    <div class="sheetno">Project MAESTRO · Group 298 · Sheet 1 of 1 · rev. Aug 2026</div>
+    <h1>MAESTRO Architecture Map</h1>
+    <p>Every component is numbered ⓪–⑬ and every line is labeled with what actually crosses it —
+       because in this system, what crosses each boundary <em>is</em> the safety argument.
+       Amber marks the research contribution; solid arrows carry trusted/typed data, dashed red carries untrusted content.</p>
+  </header>
+
+  <div class="sheet">
+  <svg viewBox="0 0 1560 1165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MAESTRO numbered component architecture diagram">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/>
+      </marker>
+      <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--untrust-stroke)"/>
+      </marker>
+    </defs>
+
+    <!-- ═══════════ USER ═══════════ -->
+    <g>
+      <circle cx="640" cy="38" r="13" fill="none" stroke="var(--line)" stroke-width="1.8"/>
+      <path d="M618,78 a22,22 0 0 1 44,0" fill="none" stroke="var(--line)" stroke-width="1.8"/>
+      <text x="672" y="60" class="t">User</text>
+      <text x="672" y="75" class="t-sub">the only T0 authority</text>
+    </g>
+
+    <!-- ═══════════ ZONES ═══════════ -->
+    <rect x="100" y="250" width="770" height="150" rx="10" class="zone-trust"/>
+    <text x="118" y="388" class="t-zone">INTERNAL TRUSTED ZONE (T0/T1) — UNTRUSTED CONTENT CANNOT ENTER</text>
+
+    <rect x="1310" y="238" width="235" height="112" rx="10" class="zone-opt"/>
+    <text x="1330" y="338" class="t-zone">OPTIONAL SERVICES</text>
+
+    <rect x="950" y="640" width="420" height="190" rx="10" class="zone-plain"/>
+    <text x="968" y="666" class="t">Memory &amp; Store (L0)</text>
+
+    <rect x="100" y="800" width="530" height="155" rx="10" class="zone-plain"/>
+    <text x="130" y="828" class="t">Executor Layer (L1)</text>
+    <text x="255" y="828" class="t-sub">— the only per-OS code · darwin/ ⇄ win32/</text>
+    <circle cx="617" cy="813" r="13" class="badge"/><text x="617" y="817.5" text-anchor="middle" class="t-badge">6</text>
+
+    <rect x="100" y="1005" width="650" height="140" rx="10" class="zone-untrust"/>
+    <text x="118" y="1133" class="t-zone">UNTRUSTED WORLD (T2) — DATA ONLY, NEVER INSTRUCTION</text>
+    <circle cx="737" cy="1018" r="13" class="badge"/><text x="737" y="1022.5" text-anchor="middle" class="t-badge">12</text>
+
+    <!-- ═══════════ BOXES ═══════════ -->
+    <!-- 0 Interface -->
+    <rect x="520" y="120" width="280" height="72" rx="8" class="box"/>
+    <text x="536" y="147" class="t">Interface (L6)</text>
+    <text x="536" y="166" class="t-sub">CLI / TUI · Voice: whisper STT + Piper TTS</text>
+    <text x="536" y="181" class="t-sub">GUI shell (8th sem)</text>
+    <circle cx="800" cy="120" r="13" class="badge"/><text x="800" y="124.5" text-anchor="middle" class="t-badge">0</text>
+
+    <!-- 11 LLM runtime -->
+    <rect x="980" y="120" width="250" height="72" rx="8" class="box"/>
+    <text x="996" y="147" class="t">Local LLM runtime</text>
+    <text x="996" y="166" class="t-sub">Ollama / MLX · qwen2.5-7B-instruct</text>
+    <text x="996" y="181" class="t-sub">runs fully offline · ₹0</text>
+    <circle cx="1230" cy="120" r="13" class="badge"/><text x="1230" y="124.5" text-anchor="middle" class="t-badge">11</text>
+
+    <!-- 13 Cloud (optional) -->
+    <rect x="1330" y="255" width="195" height="60" rx="8" class="box" stroke-dasharray="5 4"/>
+    <text x="1346" y="280" class="t">Free cloud LLM</text>
+    <text x="1346" y="298" class="t-sub">eval baseline B4 only</text>
+    <circle cx="1525" cy="255" r="13" class="badge"/><text x="1525" y="259.5" text-anchor="middle" class="t-badge">13</text>
+
+    <!-- 1 NLP -->
+    <rect x="130" y="290" width="215" height="80" rx="8" class="box"/>
+    <text x="146" y="316" class="t">NLP Layer (L5)</text>
+    <text x="146" y="334" class="t-sub">intent classifier · entity extractor</text>
+    <text x="146" y="349" class="t-sub">clarification manager</text>
+    <circle cx="345" cy="290" r="13" class="badge"/><text x="345" y="294.5" text-anchor="middle" class="t-badge">1</text>
+
+    <!-- 2 Planner -->
+    <rect x="400" y="290" width="210" height="80" rx="8" class="box"/>
+    <text x="416" y="316" class="t">Planner (L4)</text>
+    <text x="416" y="334" class="t-sub">LLM → Action IR DAG</text>
+    <text x="416" y="349" class="t-sub">schema-repair loop ≤ 3</text>
+    <circle cx="610" cy="290" r="13" class="badge"/><text x="610" y="294.5" text-anchor="middle" class="t-badge">2</text>
+
+    <!-- 3 Critic -->
+    <rect x="665" y="290" width="180" height="80" rx="8" class="box"/>
+    <text x="681" y="316" class="t">Critic</text>
+    <text x="681" y="334" class="t-sub">over-reach &amp; assumption</text>
+    <text x="681" y="349" class="t-sub">review before preview</text>
+    <circle cx="845" cy="290" r="13" class="badge"/><text x="845" y="294.5" text-anchor="middle" class="t-badge">3</text>
+
+    <!-- 4 Safety engine -->
+    <rect x="100" y="478" width="770" height="112" rx="8" class="box-safety"/>
+    <text x="118" y="506" class="t">★ Safety / Policy Engine (L3) — the research contribution</text>
+    <text x="118" y="528" class="t-sub">schema check · closed verb registry · DAG check · path allow/denylist (canonicalized)</text>
+    <text x="118" y="545" class="t-sub">deterministic risk scorer R0–R3 (no LLM · monotonic · fail-closed) · budget guard</text>
+    <text x="118" y="562" class="t-sub">DRY-RUN simulator → effect manifest · consent gate · trust tagger · hard blocks · audit logger</text>
+    <circle cx="870" cy="478" r="13" class="badge"/><text x="870" y="482.5" text-anchor="middle" class="t-badge">4</text>
+
+    <!-- 5 Orchestrator -->
+    <rect x="100" y="668" width="370" height="84" rx="8" class="box"/>
+    <text x="116" y="695" class="t">Orchestrator (L2)</text>
+    <text x="116" y="713" class="t-sub">topological DAG execution · postcondition verifier</text>
+    <text x="116" y="728" class="t-sub">undo stack · halt-and-rollback on failure</text>
+    <circle cx="470" cy="668" r="13" class="badge"/><text x="470" y="672.5" text-anchor="middle" class="t-badge">5</text>
+
+    <!-- Executor sub-boxes -->
+    <rect x="130" y="855" width="145" height="66" rx="6" class="box-sub"/>
+    <text x="144" y="880" class="t" style="font-size:12.5px">File / Search</text>
+    <text x="144" y="897" class="t-sub">pathlib · send2trash</text>
+    <rect x="300" y="855" width="150" height="66" rx="6" class="box-sub"/>
+    <text x="314" y="880" class="t" style="font-size:12.5px">Browser</text>
+    <text x="314" y="897" class="t-sub">Playwright (portable)</text>
+    <rect x="475" y="855" width="135" height="66" rx="6" class="box-sub"/>
+    <text x="489" y="880" class="t" style="font-size:12.5px">App / System</text>
+    <text x="489" y="897" class="t-sub">AppleScript · pywinauto</text>
+
+    <!-- 7 Summarizer -->
+    <rect x="700" y="848" width="225" height="84" rx="8" class="box-green"/>
+    <text x="716" y="875" class="t">Summarizer</text>
+    <text x="716" y="893" class="t-sub">sandboxed LLM · NO tools</text>
+    <text x="716" y="908" class="t-sub">cannot emit actions — output is data</text>
+    <circle cx="925" cy="848" r="13" class="badge"/><text x="925" y="852.5" text-anchor="middle" class="t-badge">7</text>
+
+    <!-- Memory cylinders 8,9,10 -->
+    <g>
+      <path class="cyl-body" d="M975,700 v72 a55,13 0 0 0 110,0 v-72"/>
+      <ellipse class="cyl-top" cx="1030" cy="700" rx="55" ry="13"/>
+      <text x="1030" y="740" text-anchor="middle" class="t" style="font-size:12.5px">SQLite</text>
+      <text x="1030" y="756" text-anchor="middle" class="t-sub">episodes · undo</text>
+      <circle cx="1085" cy="693" r="12" class="badge"/><text x="1085" y="697.5" text-anchor="middle" class="t-badge">8</text>
+    </g>
+    <g>
+      <path class="cyl-body" d="M1105,700 v72 a55,13 0 0 0 110,0 v-72"/>
+      <ellipse class="cyl-top" cx="1160" cy="700" rx="55" ry="13"/>
+      <text x="1160" y="740" text-anchor="middle" class="t" style="font-size:12.5px">Audit log</text>
+      <text x="1160" y="756" text-anchor="middle" class="t-sub">hash-chained</text>
+      <circle cx="1215" cy="693" r="12" class="badge"/><text x="1215" y="697.5" text-anchor="middle" class="t-badge">9</text>
+    </g>
+    <g>
+      <path class="cyl-body" d="M1235,700 v72 a55,13 0 0 0 110,0 v-72"/>
+      <ellipse class="cyl-top" cx="1290" cy="700" rx="55" ry="13"/>
+      <text x="1290" y="740" text-anchor="middle" class="t" style="font-size:12.5px">ChromaDB</text>
+      <text x="1290" y="756" text-anchor="middle" class="t-sub">exemplars · entities</text>
+      <circle cx="1345" cy="693" r="12" class="badge"/><text x="1345" y="697.5" text-anchor="middle" class="t-badge">10</text>
+    </g>
+
+    <!-- Untrusted cylinders -->
+    <g>
+      <path class="cyl-body" d="M140,1042 v58 a70,13 0 0 0 140,0 v-58"/>
+      <ellipse class="cyl-top" cx="210" cy="1042" rx="70" ry="13"/>
+      <text x="210" y="1077" text-anchor="middle" class="t" style="font-size:12.5px">Files &amp; folders</text>
+      <text x="210" y="1093" text-anchor="middle" class="t-sub">pdf · csv · docs …</text>
+    </g>
+    <g>
+      <path class="cyl-body" d="M340,1042 v58 a70,13 0 0 0 140,0 v-58"/>
+      <ellipse class="cyl-top" cx="410" cy="1042" rx="70" ry="13"/>
+      <text x="410" y="1077" text-anchor="middle" class="t" style="font-size:12.5px">Web pages</text>
+      <text x="410" y="1093" text-anchor="middle" class="t-sub">DOM · downloads</text>
+    </g>
+    <g>
+      <path class="cyl-body" d="M540,1042 v58 a70,13 0 0 0 140,0 v-58"/>
+      <ellipse class="cyl-top" cx="610" cy="1042" rx="70" ry="13"/>
+      <text x="610" y="1077" text-anchor="middle" class="t" style="font-size:12.5px">Apps / OS</text>
+      <text x="610" y="1093" text-anchor="middle" class="t-sub">launch · quit · settings</text>
+    </g>
+
+    <!-- ═══════════ EDGES ═══════════ -->
+    <!-- User -> Interface -->
+    <path class="edge" d="M640,88 V116" marker-end="url(#arr)"/>
+    <text x="652" y="106" class="el">instruction (T0)</text>
+
+    <!-- NLP -> User clarify (dashed) -->
+    <path class="edge-dash" d="M180,290 V96 H612" marker-end="url(#arr)"/>
+    <text x="196" y="90" class="el">clarifying question (slot unfilled / low confidence)</text>
+
+    <!-- Interface -> NLP -->
+    <path class="edge" d="M540,192 V222 H245 V286" marker-end="url(#arr)"/>
+    <text x="330" y="216" class="el">raw text</text>
+
+    <!-- NLP -> Planner -->
+    <path class="edge" d="M345,330 H396" marker-end="url(#arr)"/>
+    <text x="332" y="322" class="el" text-anchor="middle" dx="24">intent + entities</text>
+
+    <!-- Planner <-> LLM -->
+    <path class="edge" d="M505,290 V240 H1105 V196" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="700" y="234" class="el">constrained JSON decode ⇄ Action IR (verb enum = closed registry)</text>
+
+    <!-- Planner -> Critic -->
+    <path class="edge" d="M610,330 H661" marker-end="url(#arr)"/>
+    <text x="636" y="322" class="el" text-anchor="middle">plan (T1)</text>
+
+    <!-- Critic -> Safety -->
+    <path class="edge" d="M755,370 V474" marker-end="url(#arr)"/>
+    <text x="765" y="425" class="el">reviewed plan</text>
+
+    <!-- Chroma -> Planner exemplars -->
+    <path class="edge" d="M1290,687 V420 H505 V374" marker-end="url(#arr)"/>
+    <text x="880" y="414" class="el">few-shot exemplars (T1, retrieved)</text>
+
+    <!-- Safety <-> User preview/consent -->
+    <path class="edge" d="M870,520 H900 V140 H804" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="908" y="300" class="el">▲ dry-run effect preview + risk tier</text>
+    <text x="908" y="318" class="el">▼ consent: click (R2) / typed (R3) / deny</text>
+
+    <!-- Safety -> Orchestrator -->
+    <path class="edge" d="M285,590 V664" marker-end="url(#arr)"/>
+    <text x="297" y="632" class="el">approved FROZEN DAG (cannot grow)</text>
+
+    <!-- Safety -> Audit -->
+    <path class="edge" d="M870,565 H1160 V685" marker-end="url(#arr)"/>
+    <text x="915" y="559" class="el">PROPOSED / GATED / APPROVED / DENIED / BLOCKED</text>
+
+    <!-- Orchestrator -> SQLite -->
+    <path class="edge" d="M470,720 H1010 V712" marker-end="url(#arr)"/>
+    <text x="640" y="713" class="el">episode record · EXECUTED / FAILED / UNDONE → audit</text>
+
+    <!-- Orchestrator <-> Executors -->
+    <path class="edge" d="M285,752 V796" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="297" y="778" class="el">▼ verb dispatch (one validated action) · ▲ result + effect manifest</text>
+
+    <!-- Executors -> untrusted -->
+    <path class="edge" d="M202,921 V1030" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="212" y="985" class="el">allowlisted reads/writes only</text>
+    <path class="edge" d="M375,921 V1030" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="385" y="1000" class="el">DOM actions</text>
+    <path class="edge" d="M542,921 V1030" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <text x="552" y="1000" class="el">scripted control</text>
+
+    <!-- Executors -> Summarizer (taint) -->
+    <path class="edge-taint" d="M630,885 H696" marker-end="url(#arr-red)"/>
+    <text x="600" y="843" class="el">tainted content (T2)</text>
+
+    <!-- Summarizer -> Interface -->
+    <path class="edge" d="M930,848 V160 H804" marker-end="url(#arr)"/>
+    <text x="938" y="480" class="el">summary as DATA — no tools, no actions possible</text>
+
+    <!-- LLM -> Cloud optional -->
+    <path class="edge-dash" d="M1230,156 H1420 V251" marker-end="url(#arr)"/>
+    <text x="1250" y="148" class="el">HTTPS</text>
+    <text x="1428" y="220" class="el">baselines only,</text>
+    <text x="1428" y="234" class="el">never file contents</text>
+  </svg>
+  </div>
+
+  <div class="legend">
+    <span><i class="sw sw-safety"></i>safety layer — the research contribution</span>
+    <span><i class="sw sw-trust"></i>trusted zone (T0/T1)</span>
+    <span><i class="sw sw-untrust"></i>untrusted (T2) — data only</span>
+    <span><i class="sw sw-green"></i>sandboxed, tool-less</span>
+    <span><i class="sw sw-opt"></i>optional / dashed = not required</span>
+    <span><i class="sw sw-badge"></i>component number ⓪–⑬</span>
+  </div>
+
+  <section>
+    <h2>Component index</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Component</th><th>Role</th><th>Status (Aug 2026)</th></tr></thead>
+      <tbody>
+        <tr><td class="n">0</td><td>Interface (L6)</td><td>CLI/TUI today; voice (local whisper/Piper) Week 8; GUI in 8th sem</td><td>CLI working</td></tr>
+        <tr><td class="n">1</td><td>NLP layer (L5)</td><td>Intent + entities + clarification; refusal is a trained class</td><td>Spec done; build W8+</td></tr>
+        <tr><td class="n">2</td><td>Planner (L4)</td><td>Local LLM → Action IR DAG via constrained JSON decoding</td><td><strong>Working (v0.2)</strong></td></tr>
+        <tr><td class="n">3</td><td>Critic</td><td>Reviews plans for over-reach before the user sees a preview</td><td>Spec done; 8th sem</td></tr>
+        <tr><td class="n">4</td><td>Safety / policy engine (L3)</td><td>Deterministic gatekeeper: registry, paths, risk R0–R3, dry-run, consent, audit</td><td><strong>Working + tested</strong></td></tr>
+        <tr><td class="n">5</td><td>Orchestrator (L2)</td><td>Executes the frozen DAG; verifies postconditions; rollback</td><td><strong>Working + tested</strong></td></tr>
+        <tr><td class="n">6</td><td>Executors (L1)</td><td>Plain code, one per verb; the only per-OS layer (darwin/win32)</td><td>7 file verbs (darwin)</td></tr>
+        <tr><td class="n">7</td><td>Summarizer</td><td>Only LLM allowed to read untrusted content; has no tools — the injection firewall</td><td>Spec done; 8th sem</td></tr>
+        <tr><td class="n">8</td><td>SQLite store</td><td>Episodic memory + undo stack — raw material of the learning loop</td><td><strong>Working (v0.2)</strong></td></tr>
+        <tr><td class="n">9</td><td>Audit log</td><td>Append-only, hash-chained: sha256(prev_hash ‖ row); tampering breaks the chain</td><td><strong>Working + tested</strong></td></tr>
+        <tr><td class="n">10</td><td>ChromaDB</td><td>Workflow exemplars retrieved as few-shot context; learned entities</td><td>Week 10</td></tr>
+        <tr><td class="n">11</td><td>Local LLM runtime</td><td>Ollama/MLX, qwen2.5-7B default; fine-tuned 3B swaps in via MAESTRO_MODEL</td><td>Working</td></tr>
+        <tr><td class="n">12</td><td>Untrusted world</td><td>Files, web, apps — everything read from here is T2: data, never instruction</td><td>—</td></tr>
+        <tr><td class="n">13</td><td>Cloud LLM (optional)</td><td>Free-tier frontier model, used only as evaluation baseline B4/M5</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    Group 298 — Shashank Gupta · Seenu · Jairaj Berry · Guide: Dr. Rajni Sehgal Kaushik ·
+    Full specs: docs/02-ARCHITECTURE.md and docs/06-SAFETY-SPEC.md · 40/40 tests passing as of 19 Aug 2026.
+  </footer>
+</main>
