@@ -216,6 +216,37 @@ Every transition is one row in the hash-chained audit log.
 
 Scorer properties (defended in the report): **no LLM call** · **monotonic** (rules only raise risk) · **fail-closed** (unknown ⇒ R3). Plan risk = max(action risks). Deletions always go to Trash, never unlink.
 
+### 6.1 Browser & domain policy
+
+The tiers above are scoped to *verbs*. The browser needs a second axis, because
+`browser.click` and `browser.fill` are generic verbs that can reach a
+hard-blocked **effect** by another route (clicking "Send" achieves `email.send`;
+filling a password field is credential entry). Two rules close it:
+
+- **Effect-scoped refusal.** `browser.fill` inspects the target field —
+  `type=password` or an `autocomplete` of `current-password` / `new-password` /
+  `cc-number` / `cc-csc` / `one-time-code` is refused outright, not escalated.
+  `browser.click` classifies the target's accessible name (send / submit / buy /
+  pay / confirm / delete). If the element cannot be inspected, it is restricted.
+- **Domain capability profiles** — the path allowlist generalized to a second
+  resource type, inheriting the same deterministic / monotonic / fail-closed
+  properties:
+
+| Profile | Domains | Permitted |
+|---|---|---|
+| `read_only` | news, docs, reference | `browser.open`, `browser.extract` |
+| `read_draft` | mail, messaging | + `browser.fill` (compose only) — **never** submit |
+| `read_download` | course portals, file hosts | + `browser.download` |
+| `blocked` | banking, payment, ID portals | nothing; refused with an explanation |
+| *(unlisted)* | everything else | `read_only`, plan escalated to R2 |
+
+**What this means for "operate my mail from the browser":** the user *can* have
+MAESTRO open the mailbox, summarize it, download an attachment, and draft a
+reply. The user *cannot* have MAESTRO log in or press Send. MAESTRO drives an
+already-authenticated session and leaves the draft for a human. Mail is also the
+most realistic indirect-injection vector in the system — an attacker only has to
+send an email — so a mail attack belongs in the adversarial suite.
+
 ---
 
 ## 7. Data Model (L0)
@@ -282,11 +313,13 @@ Platform-specific code exists **only** under `maestro/executor/{darwin,win32}/`.
 | ④ Safety engine (scorer, paths, audit) | ✅ docs/06 | ✅ v0.1 | ✅ incl. adversarial |
 | Action IR + ⑤ orchestrator | ✅ docs/02 | ✅ v0.1 | ✅ |
 | ② Planner (local LLM, constrained decode) | ✅ docs/02/05 | ✅ v0.2 | ✅ |
-| ⑧ Episodes + learning-loop export | ✅ docs/05 | ✅ v0.2 | ✅ |
+| ⑧ Episodes + learning-loop export | ✅ docs/05 | ✅ v0.3 | ✅ |
+| ⑧ Preferences + durable undo stack | ✅ docs/02 §8 | ✅ v0.3 | ✅ |
+| Human labeling queue (`review`) | ✅ docs/05 §2 | ✅ v0.3 | ✅ |
 | ⑥a File verbs (7) | ✅ | ✅ darwin | ✅ |
 | ① Staged NLP (intent/entity stages) | ✅ docs/05 | ⏳ W8+ | — |
 | ⑥b Browser · ⓪b Voice | ✅ | ⏳ W8 | — |
 | ③ Critic · ⑦ Summarizer | ✅ docs/02 | ⏳ 8th sem | — |
 | ⑥ win32 backend · ⓪c GUI | ✅ | ⏳ 8th sem M1/M13 | — |
 
-40/40 automated tests passing as of 19 Aug 2026.
+48/48 automated tests passing as of 19 Aug 2026.

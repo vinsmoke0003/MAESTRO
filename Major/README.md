@@ -16,17 +16,19 @@ everything the planner will later produce.
 | `maestro/safety/audit.py` | Hash-chained tamper-evident audit log | docs/02 §8 |
 | `maestro/executor/fs.py` | 7 file verbs, portable, each with `dry_run()` + `undo()` | docs/02 §3.3 |
 | `maestro/orchestrator.py` | dry-run → consent gate → topological execute → rollback | docs/02 §4 |
-| `tests/` | 35 tests incl. the symlink-escape, lying-planner, and audit-tamper cases | — |
+| `tests/` | 48 tests incl. the symlink-escape, lying-planner, and audit-tamper cases | — |
 
 ## Run it
 
 ```bash
 cd Major
 source .venv/bin/activate     # created with: uv venv --python 3.12 .venv
-python -m pytest -q           # 35 passed
-python -m maestro.cli demo    # fixture → preview → consent → execute
-python -m maestro.cli audit-verify
-python -m maestro.cli verbs
+uv pip install -e .           # once — puts `maestro` on PATH
+python -m pytest -q           # 48 passed
+
+maestro demo                  # fixture → preview → consent → execute
+maestro audit-verify
+maestro verbs
 ```
 
 The demo creates `~/maestro_workspace/`, drops fake PDFs in `inbox/`, and runs
@@ -46,8 +48,8 @@ counts, approve it, and can then verify the audit hash chain.
 ## v0.2 — the planner and the learning loop
 
 ```bash
-python -m maestro.cli ask move the pdfs from inbox to archive
-python -m maestro.cli learn     # episode stats + export training candidates
+maestro ask move the pdfs from inbox to archive
+maestro learn     # episode stats + export training candidates
 ```
 
 `ask` is the full pipeline: English → local LLM (constrained JSON decoding,
@@ -64,11 +66,31 @@ use `ask` daily → episodes accumulate → `learn` exports JSONL candidates
 
 Model selection: `MAESTRO_MODEL` env var (default `qwen2.5:7b-instruct-q4_K_M`).
 
-**Known issue for the dataset design** (deliberate, documented): a refused
-unsafe instruction currently exports as a "completed" episode. Before any
-training run, candidates must be labeled with `expected_behavior`
-(execute / clarify / refuse — docs/05 §2) so refusals teach refusal, not
-compliance. This is the human-verification step; it is not optional.
+## v0.3 — the L0 store
+
+```bash
+maestro db        # initialise / inspect the store
+maestro review    # label episodes for training
+```
+
+One SQLite file (`~/maestro_workspace/maestro.db`) now holds all four L0
+tables — `episodes`, `audit_log`, `preferences`, `undo_stack` — because NFR-10
+("every executed action traceable to the instruction that caused it") is a join,
+and a join needs one database. `schema.migrate()` is additive and idempotent, so
+a v0.2 database keeps its history and gains the new columns.
+
+The episode row now carries what the evaluation actually needs: `plan_ms` /
+`exec_ms` for the latency percentiles, `consent` alongside `gate` (what the user
+did vs. what policy demanded — that difference *is* SCR/FCR), `steps_ok` /
+`steps_total`, `input_mode` for the voice-vs-text comparison, and `platform` for
+cross-platform equivalence.
+
+**The v0.2 dataset issue is now closed.** Refusals are exported rather than
+filtered out — a blocked plan is the only thing that teaches a model to refuse,
+so dropping it trained compliance by omission. Every candidate now carries its
+`outcome` and a `training_ready` flag that is false until a human sets
+`expected_behavior` via `review`. The rule is enforced by the schema, not by
+discipline (`tests/test_memory.py`).
 
 ## Next (per docs/04-ROADMAP.md Track B)
 

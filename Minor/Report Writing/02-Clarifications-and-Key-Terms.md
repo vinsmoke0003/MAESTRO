@@ -10,12 +10,12 @@ This document does two jobs: (1) it clarifies the questions people actually ask 
 
 ### C1. What exactly is the relationship between the Minor and the Major?
 
-They are **one project in two phases**, not two projects.
+**They are two separate deliverables, each defended on its own terms** — not two halves of one document. They share a subject and they converge at the end, but each is submitted, graded, and examined independently.
 
-- **Minor (7th sem, 12 weeks) = the research.** Literature review, gap analysis, requirements, the formal specification of the Action IR / risk taxonomy / trust model, the evaluation methodology, and a seed dataset. Deliverable: a research report that *proposes and specifies* the system, plus a working vertical-slice demo.
-- **Major (8th sem, 16 weeks) = the outcome.** Full implementation on both OSes, dataset scaled to 3,000+ pairs, the LoRA fine-tune, the full benchmark + adversarial evaluation, the user study, and the final report + paper draft + public dataset.
+- **Minor (7th sem, 12 weeks) — a research submission.** Literature review, gap analysis, requirements, the formal specification of the Action IR / risk taxonomy / trust model, the evaluation methodology, and a seed dataset. It answers *"what should exist, why does it need to exist, and how will we know it works?"* and it reaches its own conclusion.
+- **Major (8th sem, 16 weeks) — a built outcome.** Full implementation on both OSes, dataset scaled up, the LoRA fine-tune, the benchmark and adversarial evaluation, the user study, and the final report + paper draft + public dataset release. It answers *"here it is, and here are the numbers."*
 
-The Minor answers *"what should exist and how will we know it works?"* The Major answers *"here it is, and here are the numbers."*
+**Writing consequence, and it matters:** each report must **stand alone**. The Minor must not read as "part one, to be continued" — it needs a complete arc ending in its own conclusion and future work. The Major must not assume its examiner has read the Minor, so it re-establishes the problem, the architecture, and the contribution in its own voice. Deliberate overlap between the two is correct and expected; it is not duplication.
 
 ### C2. "Isn't this just an LLM with a confirmation popup?"
 
@@ -52,6 +52,29 @@ A safety control with a bypass is a safety control that will be bypassed — usu
 ### C10. What is genuinely novel, in one breath?
 
 A typed, dry-runnable Action IR governed by a deterministic risk engine; prompt-injection resistance evaluated as a first-class metric with per-control attribution; the price-of-safety quantified via ablation; and a public safety-annotated NL→plan dataset (DeskPlan). Individually borrowed ideas (dry-run is `terraform plan` for the desktop); the contribution is applying and **measuring** them in a domain that has neither.
+
+### C11. What are we actually building — a website, a desktop app, a terminal tool, a plugin?
+
+**An open-source local desktop application, driven from the terminal, with an optional desktop GUI later.** It is not a website and not a plugin to an existing assistant. Both exclusions are architectural, not stylistic:
+
+- **It cannot be a website.** A web page runs inside a browser sandbox that is *designed* to prevent filesystem access. MAESTRO's entire purpose is to operate a real machine — move actual files, launch actual applications, read actual disks — which requires a native program running with the user's own permissions.
+- **It cannot be a "skill" or assistant plugin.** As an Alexa skill or Siri shortcut, the platform vendor owns everything after the intent is recognised. Deterministic risk scoring, dry-run-before-consent, and tamper-evident auditing would all happen in *their* code, not ours — which would give away precisely the layer that constitutes this project's contribution.
+
+The system is delivered in three layers:
+
+| Layer | What it is | Requirement | When |
+|---|---|---|---|
+| **Package** | `maestro`, an importable Python package with a build config — a library *and* an application. The evaluation harness imports it to drive 3,000 benchmark runs. | — | Exists |
+| **Terminal interface** | `maestro ask "move the pdfs to archive"` — a CLI/TUI **sufficient for all development and evaluation** | **FR-60 (must)** | Exists |
+| **Desktop GUI** | Electron/Tauri shell: plan preview, live progress, audit-log viewer, undo button. Wraps the same pipeline; adds no capability. | FR-61 (should) | 8th sem M13 — **first item on the cut list** |
+
+### C12. So what is the actual deliverable?
+
+A research project's deliverable is not a product, and the PRD says so explicitly: *no installer, no auto-update, no telemetry, no multi-user support.* What is submitted is:
+
+**the report · a conference-submittable paper draft · the DeskPlan dataset released publicly · the source code on GitHub · a demo video**
+
+The agent is the *artifact*; the measurements are the *contribution*. The GUI exists so an examiner can follow a live demo on screen — not because the system is being shipped to end users. Stated in one line for the viva: **"We built an open-source local desktop agent, a public safety-annotated dataset, and an evaluation of four safety properties it provides."**
 
 ---
 

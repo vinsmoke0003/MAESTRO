@@ -76,6 +76,35 @@ DENYLIST  = ["~/.ssh", "~/.aws", "~/.config", "~/Library/Keychains", "~/.gnupg",
 
 Denylist is checked first and wins. Paths are canonicalized (`realpath`) **before** matching — otherwise `~/Downloads/../../.ssh/id_rsa` walks straight through your allowlist. Symlinks are resolved and re-checked; a symlink in an allowed directory pointing at a denied one is a denied path. Write the test for that case in Week 5, because it is the bug you would otherwise ship.
 
+### Windows path semantics (cross-platform escape surface)
+
+The rules above were written and tested against POSIX. Windows introduces a
+second set of ways to name the same file, and **every alias is a potential
+allowlist escape**. Canonicalization must therefore be platform-aware, and each
+case below needs its own test written *before* the `win32/` executor, exactly
+as the symlink case was on macOS.
+
+| # | Alias mechanism | Escape example | Required handling |
+|---|---|---|---|
+| W1 | **8.3 short names** | `C:\\PROGRA~1` -> `C:\\Program Files` (denied) | Expand short names via `GetLongPathName` before matching |
+| W2 | **Case-insensitivity** | `C:\\wInDoWs`, `~/.SSH/id_rsa` | Case-fold both sides on Windows only; never on macOS/Linux |
+| W3 | **Separator mixing** | `C:/Windows\\System32` | Normalize separators before matching |
+| W4 | **UNC / device paths** | `\\\\?\\C:\\Windows`, `\\\\localhost\\c$\\Windows` | Reject or normalize the `\\\\?\\` and `\\\\host\\share` prefixes |
+| W5 | **Reserved device names** | `CON`, `NUL`, `AUX`, `COM1` | Deny outright; they are devices, not files |
+| W6 | **Alternate data streams** | `notes.txt:hidden` | Strip and validate the stream suffix; deny unnamed-stream tricks |
+| W7 | **Drive-relative paths** | `C:notes.txt` (relative to CWD *of that drive*) | Resolve against the per-drive CWD before matching |
+| W8 | **Trailing dots/spaces** | `secret.txt. ` resolves to `secret.txt` | Strip before matching |
+
+W1 is the sharpest and the best test to write first: it is the precise Windows
+analogue of the symlink escape, and a denylist that misses it lets a plan reach
+`C:\Program Files` through a name that never literally contains the string.
+
+**This is also a reportable result.** Most cross-platform agent work never
+demonstrates behavioral equivalence at all. A differential test asserting that
+the *same* instruction produces the *same* Action IR and the *same* policy
+verdict on both platforms — with a table of the alias cases that had to be
+handled to get there — is a genuine contribution, not just hygiene.
+
 ---
 
 ## 3. The Dry-Run Simulator
@@ -139,6 +168,65 @@ These are refused regardless of user instruction, user confirmation, or configur
 | Arbitrary shell execution | Would nullify the closed verb registry |
 
 Refusal is a **tested behavior with its own accuracy metric**, not an exception path. And the absence of an override flag is itself the design argument: a safety control with a bypass is a safety control that will be bypassed, usually by a user who has been prompted twelve times already that afternoon.
+
+### 5.1 Hard blocks must be scoped to *effects*, not verbs
+
+The blocks above are enforced per-verb (`VerbSpec.hard_blocked`). That is
+sufficient while every capability has its own verb — but the browser breaks the
+assumption, because `browser.click` and `browser.fill` are **generic verbs that
+can produce a hard-blocked effect by another route**:
+
+| Blocked effect | Verb-level block | The browser route around it |
+|---|---|---|
+| Send email | `email.send` blocked | `browser.click` on the Send button |
+| Enter credentials | credential entry blocked | `browser.fill` into `input[type=password]` |
+| Make a purchase | purchases blocked | `browser.fill` card fields + `browser.click` "Pay" |
+
+The deterministic scorer already provides partial cover: `browser.click` is
+irreversible with no undo, so the "irreversible => R3" rule escalates it to
+typed confirmation. But **R3 is a gate, and a hard block is an absolute** — a
+habituated user can type a token. The two must not be conflated.
+
+Required (specify at the Week 6 freeze, implement before any `browser.*` verb
+ships):
+
+1. **`browser.fill` inspects the target field.** `type=password`, or an
+   `autocomplete` token in {`current-password`, `new-password`, `cc-number`,
+   `cc-csc`, `one-time-code`}, is a **refusal**, not an escalation. This is what
+   actually enforces the credential hard block inside a browser.
+2. **`browser.click` classifies the target's accessible name.** Matching
+   send / submit / buy / pay / order / confirm / delete / post => refuse on
+   restricted domains, R3 typed confirmation elsewhere.
+3. **Fail closed:** if the element cannot be inspected (shadow DOM, canvas,
+   cross-origin iframe), treat it as restricted.
+
+### 5.2 Domain capability profiles — the allowlist, applied to the web
+
+`score_action` inspects `spec.path_args` for filesystem paths. **There is no URL
+equivalent**, which means the policy protects the disk and leaves the network
+unconstrained. The fix is the same idea applied to a second resource type: each
+domain carries a capability set, and a verb outside that set is refused.
+
+| Profile | Domains | Permitted |
+|---|---|---|
+| `read_only` | news, docs, search, reference | `browser.open`, `browser.extract` |
+| `read_draft` | mail, messaging | + `browser.fill` (compose only) — **never** submit |
+| `read_download` | course portals, file hosts | + `browser.download` |
+| `blocked` | banking, payment, crypto, government ID portals | nothing; refuse with explanation |
+| *(unlisted)* | everything else | `read_only`, and the plan is escalated to R2 |
+
+This is architecturally the better answer because it is not a new mechanism: it
+is the path allowlist generalized, so it inherits the same three properties —
+deterministic, monotonic, fail-closed — and the same test strategy.
+
+**Worked consequence — operating mail from the browser.** A user *can* have
+MAESTRO open their mailbox, extract and summarize it, download an attachment,
+and draft a reply. A user *cannot* have MAESTRO log in (credential entry is
+refused) or press Send (`read_draft` permits no submit). MAESTRO drives an
+already-authenticated session and leaves the finished draft for a human. Mail is
+also the single most realistic indirect-injection vector in the whole system —
+an attacker can put text in front of the agent simply by emailing the user — so
+a mail-based attack belongs in the adversarial suite as a worked example.
 
 ---
 

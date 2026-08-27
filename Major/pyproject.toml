@@ -1,12 +1,17 @@
 [project]
 name = "maestro"
-version = "0.1.0"
+version = "0.3.0"
 description = "MAESTRO — Safe Multi-Agent System for Natural Language-Driven Desktop Task Automation"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.7",
     "send2trash>=1.8",
 ]
+
+[project.scripts]
+# So a demo reads `maestro ask "..."` instead of `python -m maestro.cli ask "..."`.
+# Install with: uv pip install -e .
+maestro = "maestro.cli:main"
 
 [project.optional-dependencies]
 dev = [

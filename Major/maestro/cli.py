@@ -24,14 +24,18 @@ from pathlib import Path
 import maestro.executor  # noqa: F401  (registers verbs + executors)
 from maestro import registry
 from maestro.ir import Plan
-from maestro.memory import EpisodeStore
+from maestro.memory import EpisodeStore, PreferenceStore, UndoStack, schema
 from maestro.orchestrator import Orchestrator, render_preview
 from maestro.safety import PathPolicy
 from maestro.safety.audit import AuditLog
 
-WORKSPACE = Path("~/maestro_workspace").expanduser()
-AUDIT_DB = WORKSPACE / "maestro_audit.db"
-EPISODES_DB = WORKSPACE / "maestro_episodes.db"
+WORKSPACE = Path(os.environ.get("MAESTRO_WORKSPACE",
+                                Path("~/maestro_workspace").expanduser()))
+# One database for the whole L0 layer. Audit rows must be joinable to the
+# episode that produced them (NFR-10), which requires a shared file.
+DB = WORKSPACE / "maestro.db"
+AUDIT_DB = DB
+EPISODES_DB = DB
 
 
 def _consent(plan, verdict, manifests) -> bool:
@@ -133,16 +137,81 @@ def cmd_ask(ns: argparse.Namespace) -> int:
 
 
 def cmd_learn(_: argparse.Namespace) -> int:
-    if not EPISODES_DB.exists():
+    if not DB.exists():
         print("no episodes yet — use `ask` first")
         return 1
-    store = EpisodeStore(EPISODES_DB)
+    store = EpisodeStore(DB)
     print("episodes by status:", store.stats())
     out = WORKSPACE / "training_candidates.jsonl"
-    n = store.export_dataset(out)
+    r = store.export_dataset(out)
     store.close()
-    print(f"exported {n} successful episode(s) -> {out}")
-    print("(candidates only — human verification required before training, docs/05 §2)")
+    print(f"exported {r['exported']} episode(s) -> {out}")
+    print(f"  training-ready (human-labeled): {r['training_ready']}")
+    print(f"  awaiting review:                {r['needs_review']}")
+    if r["needs_review"]:
+        print("\nRun `maestro review` to label them. Nothing enters training")
+        print("unverified — refusals must teach refusal (docs/05 §2).")
+    return 0
+
+
+def cmd_review(ns: argparse.Namespace) -> int:
+    """Human labeling queue — the verification step docs/05 §2 makes mandatory."""
+    if not DB.exists():
+        print("no episodes yet — use `ask` first")
+        return 1
+    store = EpisodeStore(DB)
+    queue = store.unlabeled(limit=ns.limit)
+    if not queue:
+        print("nothing to review — every episode is labeled.")
+        store.close()
+        return 0
+    print(f"{len(queue)} episode(s) awaiting review "
+          f"(refusals first). Enter = skip, q = quit.\n")
+    labels = ["execute_auto", "execute_with_consent", "clarify", "refuse"]
+    for item in queue:
+        print(f"  #{item['episode_id']}  [{item['status']}/{item['plan_risk']}]"
+              f"  \"{item['instruction']}\"")
+        if item["suggested"]:
+            print(f"      suggested: {item['suggested']}")
+        for i, lab in enumerate(labels, 1):
+            print(f"      {i}) {lab}")
+        choice = input("      label> ").strip().lower()
+        if choice == "q":
+            break
+        if choice.isdigit() and 1 <= int(choice) <= len(labels):
+            store.label(item["episode_id"], labels[int(choice) - 1])
+            print(f"      -> {labels[int(choice) - 1]}\n")
+        else:
+            print("      skipped\n")
+    store.close()
+    return 0
+
+
+def cmd_db(_: argparse.Namespace) -> int:
+    """Initialise / inspect the L0 store."""
+    WORKSPACE.mkdir(parents=True, exist_ok=True)
+    conn = schema.connect(DB)
+    added = schema.migrate(conn)
+    print(f"database: {DB}")
+    if added:
+        print(f"migrated, added: {', '.join(added)}")
+    print()
+    for table in ("episodes", "audit_log", "preferences", "undo_stack"):
+        try:
+            n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            print(f"  {table:<12} {n:>6} row(s)   {len(cols)} columns")
+        except Exception:
+            print(f"  {table:<12} (not created yet — written on first use)")
+    prefs = PreferenceStore(conn).all()
+    if prefs:
+        print("\n  preferences:")
+        for p in prefs:
+            print(f"    {p['key']} = {p['value']}  (from {p['learned_from']})")
+    pending = UndoStack(conn).pending()
+    if pending:
+        print(f"\n  {len(pending)} un-applied undo entr(ies) — `maestro undo` to replay")
+    conn.close()
     return 0
 
 
@@ -174,6 +243,10 @@ def main(argv: list[str] | None = None) -> int:
     p_run = sub.add_parser("run")
     p_run.add_argument("plan_file")
     p_run.set_defaults(fn=cmd_run)
+    p_review = sub.add_parser("review", help="label episodes for training")
+    p_review.add_argument("--limit", type=int, default=20)
+    p_review.set_defaults(fn=cmd_review)
+    sub.add_parser("db", help="initialise / inspect the L0 store").set_defaults(fn=cmd_db)
     sub.add_parser("verbs").set_defaults(fn=cmd_verbs)
     sub.add_parser("audit-verify").set_defaults(fn=cmd_audit_verify)
     ns = ap.parse_args(argv)
