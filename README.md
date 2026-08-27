@@ -1,106 +1,321 @@
-# Project MAESTRO
+# MAESTRO
 
-**Official Title:** Design and Evaluation of a Safe Multi-Agent System for Natural Language-Driven Desktop Task Automation
+**MAESTRO** stands for **Multi-Agent Execution System for Task Reasoning and Orchestration**.
 
-**Codename:** MAESTRO — *Framework for Reliable, Instruction-Driven Automation with Yielding-to-human oversight*
+**Project Title:** Design and Evaluation of a Safe Multi-Agent System for Natural Language-Driven Desktop Task Automation
 
-| | |
+MAESTRO is a local-first desktop automation research project. It turns natural-language instructions into typed, inspectable action plans, then runs those plans only after deterministic safety checks, dry-run previews, consent gates, rollback support, and tamper-evident audit logging.
+
+The project does not claim to make LLM automation "fully safe." Its research claim is narrower and measurable:
+
+**MAESTRO makes desktop automation auditable, reversible, consent-gated, and injection-resistant.**
+---
+
+## Project Context
+
+| Field | Detail |
 |---|---|
 | Institution | Amity School of Engineering & Technology |
-| Programme | B.Tech CSE (Evening), Session 2023–27 |
-| Group No. | 298 |
+| Programme | B.Tech CSE (Evening), Session 2023-27 |
+| Group | 298 |
 | Guide | Dr. Rajni Sehgal Kaushik |
 | Area | Agentic AI with specialization in Natural Language Processing |
-| Team | Shashank Gupta (A2345923073), Seenu (A2345923074), Jairaj Berry (A2345923013) |
-| Minor Project | 7th Semester — 12 weeks — research, design, evaluation methodology |
-| Major Project | 8th Semester — 16 weeks — implementation + experimental evaluation |
-| Budget | **₹0.** Hard constraint. See [03-TECH-STACK-ZERO-COST.md](docs/03-TECH-STACK-ZERO-COST.md) |
+| Team | Shashank Gupta, Seenu, Jairaj Berry |
+| Minor Project | Research, design, safety model, evaluation methodology |
+| Major Project | Implementation, benchmarking, dataset, fine-tuning, user study |
+| Cost Constraint | INR 0 marginal cost, local-first stack |
 
 ---
 
-## You Are Here
+## Why This Exists
 
-```
-Week 1  ✅ DONE — Title finalized, synopsis submitted, WPR-1 filed
-Week 2  ◀── YOU ARE HERE (Minor Track A: literature review begins)
-                                (Major Track B: repo + environment + first LLM call)
-```
+Desktop automation today has two weak choices.
 
-Both tracks run **in parallel from this week**. That was your explicit ask: don't waste 7th semester waiting.
+Traditional tools such as scripts, macros, and Automator are predictable, but they require programming skill and break when the workflow changes.
 
----
+LLM computer-use agents understand natural language, but they often execute with broad privileges, provide weak previews, and can be manipulated by untrusted content inside files or web pages.
 
-## Read These In Order
+MAESTRO focuses on the trust gap. The system is designed around a simple rule:
 
-| # | Document | What it answers | Read when |
-|---|---|---|---|
-| 1 | [PRD](docs/01-PRD.md) | What are we building, for whom, what's in and out of scope | **Now.** Read fully. |
-| 2 | [Architecture](docs/02-ARCHITECTURE.md) | How the system is structured; the Action IR that makes cross-platform possible | **Now.** This is the technical core. |
-| 3 | [Zero-Cost Tech Stack](docs/03-TECH-STACK-ZERO-COST.md) | Every API/tool, its free-tier limits, and the setup commands | **Now.** Do the setup this week. |
-| 4 | [Roadmap](docs/04-ROADMAP.md) | Week-by-week plan for both tracks, 28 weeks total | **Now.** Then re-read every Monday. |
-| 5 | [NLP & Training](docs/05-NLP-AND-TRAINING.md) | The dataset you'll build and the LoRA fine-tune — your ML contribution | Week 4 onward |
-| 6 | [Safety Spec](docs/06-SAFETY-SPEC.md) | The risk taxonomy and policy engine — **this is your research novelty** | Week 5 onward |
-| 7 | [Evaluation](docs/07-EVALUATION.md) | Metrics, benchmark suite, baselines, ablations, user study | Week 8 onward |
-| 8 | [Team, Deliverables & Risks](docs/08-TEAM-DELIVERABLES-RISKS.md) | Who does what, what gets submitted, what could go wrong | **Now.** Share with the team. |
+**The model proposes. Deterministic code decides.**
+
+An LLM may generate a plan, but it never decides whether the plan is safe, whether consent is required, or whether a dangerous action may proceed.
 
 ---
 
-## The One-Paragraph Version
+## Current Status
 
-You are building a desktop AI assistant that takes natural-language instructions ("archive last month's invoices and email me a summary") and executes them on a real computer. Dozens of projects do that. **Yours is different because it refuses to do it blindly**: every planned action is compiled into a typed, inspectable intermediate representation, scored for risk and reversibility, dry-run before execution, gated behind human confirmation when it crosses a threshold, and written to a tamper-evident audit log. You will build your own instruction→plan dataset, fine-tune a small open model on it, and prove with numbers that the safety layer costs you almost nothing in capability while eliminating an entire class of failures — including prompt-injection attacks that hijack the agent through file contents and web pages.
+The repository currently contains both the research documentation and a working Major Project implementation.
 
-That last sentence is your paper. Everything else is engineering in service of it.
+### Completed So Far
 
----
+| Area | Status |
+|---|---|
+| Project title, scope, and research framing | Done |
+| PRD, architecture, roadmap, tech stack, safety spec, evaluation plan | Done |
+| Minor report writing material and WPR artifacts | In progress / available |
+| Action IR with typed plan validation | Implemented |
+| Closed verb registry | Implemented |
+| Deterministic R0-R3 risk scorer | Implemented |
+| Path allowlist / denylist with canonicalization | Implemented |
+| Hash-chained audit log | Implemented |
+| File executor verbs with dry-run and undo behavior | Implemented |
+| Orchestrator pipeline | Implemented |
+| CLI demo, plan runner, audit verifier, verb listing | Implemented |
+| Local Ollama planner path | Implemented |
+| SQLite L0 store for episodes, audit, preferences, undo stack | Implemented |
+| Learning-loop export and human review flow | Implemented |
+| Automated tests | 48 passing |
 
-## Three Things To Internalize Before You Start
+### Current Verification
 
-**1. The safety layer is the project, not a feature.**
-If you build a great agent with a weak safety layer, you have a worse version of something that already exists. If you build a mediocre agent with a rigorous, measurable safety layer, you have a contribution. Every time you must choose where to spend a week, spend it on the safety/evaluation side.
+The Major Project test suite currently passes:
 
-**2. "Fully safe" is not a claim you can defend — and you should not try.**
-An LLM-driven agent with filesystem and browser access cannot be proven safe. If you write "fully safe" in your report, your examiner will take it apart in the viva. What you *can* defend, with evidence, is: **auditable, reversible, consent-gated, and injection-resistant**. Those are four measurable properties. Claim exactly those, show the numbers, and name the residual risks yourself before anyone else does. Owning the limitation is what separates a research report from a product pitch. This is written up properly in [06-SAFETY-SPEC.md](docs/06-SAFETY-SPEC.md#what-we-do-not-claim).
-
-**3. Cross-platform is the single biggest threat to your timeline.**
-You chose Windows + macOS. That is defensible and it strengthens the report — but it is also how final-year projects die. The mitigation is architectural, not managerial: the **Action IR** (see [Architecture](docs/02-ARCHITECTURE.md#3-the-action-ir)) keeps ~80% of the system OS-independent, and only a thin executor layer is written twice. Guard that boundary. The moment platform-specific logic leaks upward into the planner, you have two projects instead of one.
-
----
-
-## Repository Layout (to be created in Week 2)
-
-```
-maestro/
-├── docs/                    # These documents + generated diagrams
-├── maestro/
-│   ├── nlp/                 # Intent classification, entity extraction
-│   ├── planner/             # LLM planner → Action IR
-│   ├── safety/              # Policy engine, risk scoring, dry-run  ★ novelty
-│   ├── executor/
-│   │   ├── base.py          # OS-agnostic interfaces
-│   │   ├── darwin/          # macOS backend
-│   │   └── win32/           # Windows backend
-│   ├── memory/              # SQLite (episodic) + ChromaDB (semantic)
-│   ├── voice/               # Whisper STT, Piper TTS, wake word
-│   └── llm/                 # Provider router (local Ollama ↔ free cloud)
-├── data/
-│   ├── seed/                # Hand-written instruction→plan pairs
-│   ├── generated/           # Template + LLM-expanded pairs
-│   └── adversarial/         # Injection & unsafe-instruction test cases
-├── eval/
-│   ├── tasks/               # 100-task benchmark suite
-│   ├── harness.py           # Automated runner
-│   └── results/             # CSVs + plots for the report
-├── training/                # LoRA fine-tuning scripts + configs
-└── ui/                      # Electron shell (built last, in 8th sem)
+```bash
+48 passed
 ```
 
+The implementation contains approximately 2,719 Python lines including tests.
+
 ---
 
-## Weekly Ritual (non-negotiable, 45 minutes every Monday)
+## Repository Layout
 
-1. Open [04-ROADMAP.md](docs/04-ROADMAP.md), find the current week, read both tracks.
-2. Each member states what they closed last week and what they own this week.
-3. Fill the WPR **from the roadmap**, not from memory. The roadmap's deliverable column is written to be paste-able into the WPR form.
-4. Log any slip in the risk table in [08-TEAM-DELIVERABLES-RISKS.md](docs/08-TEAM-DELIVERABLES-RISKS.md). A slip you have written down is a managed risk; a slip you remember is a surprise in Week 11.
+```text
+.
+├── README.md
+├── docs/
+│   ├── 01-PRD.md
+│   ├── 02-ARCHITECTURE.md
+│   ├── 03-TECH-STACK-ZERO-COST.md
+│   ├── 04-ROADMAP.md
+│   ├── 05-NLP-AND-TRAINING.md
+│   ├── 06-SAFETY-SPEC.md
+│   ├── 07-EVALUATION.md
+│   ├── 08-TEAM-DELIVERABLES-RISKS.md
+│   ├── base-papers/
+│   └── MAESTRO-Progress-Presentation.pptx
+├── Major/
+│   ├── README.md
+│   ├── MAJOR-PROJECT-REPORT.md
+│   ├── pyproject.toml
+│   ├── maestro/
+│   │   ├── cli.py
+│   │   ├── orchestrator.py
+│   │   ├── registry.py
+│   │   ├── executor/
+│   │   ├── ir/
+│   │   ├── llm/
+│   │   ├── memory/
+│   │   ├── planner/
+│   │   └── safety/
+│   └── tests/
+└── Minor/
+    ├── Report Writing/
+    └── WPR's/
+```
 
-The WPR is not bureaucracy. Twenty filed WPRs that trace a clean line from literature review to results *is* the narrative your report needs, and it is the cheapest marks in the entire degree.
+---
+
+## System Architecture
+
+MAESTRO is organized into layered components.
+
+```text
+L6 Interface       CLI now; GUI and voice later
+L5 NLP             Intent/entity layer planned
+L4 Planner         Local LLM to Action IR
+L3 Safety          Schema validation, risk scoring, path policy, consent, audit
+L2 Orchestrator    DAG execution, rollback, postcondition handling
+L1 Executors       File executor now; search/browser/app/system later
+L0 Memory          SQLite episodes, audit, preferences, undo stack
+```
+
+The architectural boundary that matters most is the **Action IR**. Natural language is converted into a typed plan before execution. The safety layer validates and scores that plan before any side effect is allowed.
+
+---
+
+## Core Safety Model
+
+MAESTRO uses four risk tiers.
+
+| Tier | Meaning | Policy |
+|---|---|---|
+| R0 | Read-only, no external state change | Auto-execute and log |
+| R1 | Reversible local workspace change | Auto-execute, log, undo-capable |
+| R2 | Consequential or broader reversible action | Explicit confirmation |
+| R3 | Irreversible, externally visible, or security-sensitive | Typed confirmation or hard block |
+
+Some actions are hard-blocked entirely, including credential entry, purchases, permanent deletion, account creation, CAPTCHA solving, arbitrary shell execution, and administrator elevation.
+
+The safety engine is deterministic. This is intentional: safety decisions must be testable, reproducible, and immune to prompt injection.
+
+---
+
+## Major Implementation
+
+The working implementation lives in `Major/`.
+
+### Key Modules
+
+| Module | Purpose |
+|---|---|
+| `maestro/ir/` | Typed Action IR and DAG validation |
+| `maestro/registry.py` | Closed verb registry |
+| `maestro/safety/paths.py` | Allowlist and denylist path policy |
+| `maestro/safety/scorer.py` | Deterministic risk scoring |
+| `maestro/safety/audit.py` | Hash-chained audit log |
+| `maestro/executor/fs.py` | File-system verbs with dry-run and undo support |
+| `maestro/orchestrator.py` | Dry-run, consent, execution, rollback |
+| `maestro/planner/` | Natural-language to Action IR planner |
+| `maestro/llm/ollama.py` | Local Ollama client |
+| `maestro/memory/` | SQLite schema, episodes, preferences, undo stack |
+| `maestro/cli.py` | Developer CLI |
+
+---
+
+## Running The Major Project
+
+From the `Major/` directory:
+
+```bash
+source .venv/bin/activate
+uv pip install -e .
+python -m pytest -q
+```
+
+Run the demo:
+
+```bash
+maestro demo
+```
+
+Other useful commands:
+
+```bash
+maestro verbs
+maestro audit-verify
+maestro db
+maestro ask "move the pdfs from inbox to archive"
+maestro learn
+maestro review
+```
+
+The default workspace is:
+
+```text
+~/maestro_workspace
+```
+
+It can be changed with:
+
+```bash
+MAESTRO_WORKSPACE=/path/to/workspace
+```
+
+The default model is:
+
+```text
+qwen2.5:7b-instruct-q4_K_M
+```
+
+It can be changed with:
+
+```bash
+MAESTRO_MODEL=model-name
+```
+
+---
+
+## What The Current Demo Shows
+
+The current CLI demo creates a small workspace fixture, finds PDF files, previews the planned effects, asks for approval when needed, executes the file operation, and records the action chain in the audit log.
+
+This already demonstrates the central thesis path:
+
+```text
+instruction -> Action IR -> deterministic safety verdict -> dry-run preview -> consent gate -> execution -> audit log
+```
+
+---
+
+## Tests
+
+The test suite currently covers the core safety and orchestration behavior, including:
+
+- Action IR validation
+- DAG ordering
+- closed verb registry behavior
+- path traversal denial
+- symlink escape denial
+- planner risk hints being ignored for decisions
+- deterministic risk scoring
+- rollback behavior
+- audit tamper detection
+- SQLite memory schema and training candidate export
+
+Run:
+
+```bash
+cd Major
+source .venv/bin/activate
+python -m pytest -q
+```
+
+Expected current result:
+
+```text
+48 passed
+```
+
+---
+
+## Research Contribution
+
+The project contribution is not simply "an assistant that controls a computer."
+
+The contribution is a safety architecture for desktop agents that can be evaluated through measurable properties:
+
+1. **Auditability**: every proposed, gated, executed, failed, or undone action is logged.
+2. **Reversibility**: supported actions declare undo behavior and rollback is part of orchestration.
+3. **Consent-gating**: higher-risk plans require user approval after a dry-run preview.
+4. **Injection resistance**: untrusted content is treated as data, not instruction, and cannot expand the plan.
+
+These are the properties the report and evaluation should defend.
+
+---
+
+## Still To Build
+
+The next major work areas are:
+
+| Area | Status |
+|---|---|
+| Search verbs | Not yet implemented |
+| Browser verbs via Playwright | Not yet implemented |
+| Voice input/output | Not yet implemented |
+| TUI or GUI preview | Not yet implemented |
+| Evaluation harness | Not yet implemented |
+| 100-task benchmark | Not yet implemented |
+| DeskPlan dataset expansion | Not yet implemented |
+| LoRA fine-tuning | Not yet implemented |
+| Windows executor parity | Not yet implemented |
+| User study | Not yet implemented |
+
+---
+
+## Recommended Next Steps
+
+1. Update the top-level README from Week 2 orientation to current project status.
+2. Keep `Major/README.md` as the developer-focused implementation guide.
+3. Keep the root README as the examiner/team-facing overview.
+4. Start the next implementation step with `search.*` verbs or the evaluation harness.
+5. Keep safety tests central whenever adding a new executor.
+
+---
+
+## Project Principle
+
+MAESTRO should not be evaluated by how much power it gives an LLM.
+
+It should be evaluated by how much useful desktop automation it can perform while keeping the model inside a constrained, inspectable, reversible, and measurable execution path.
