@@ -1,0 +1,113 @@
+[project]
+name = "maestro"
+version = "1.0.0"
+description = "MAESTRO — a safe multi-agent system for natural-language desktop task automation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Shashank Gupta" },
+    { name = "Seenu" },
+    { name = "Jairaj Berry" },
+]
+keywords = ["agent", "safety", "desktop-automation", "nlp", "action-ir"]
+
+# Deliberately tiny. Everything below this line is enough to run the whole
+# pipeline — NLP, planning, the safety layer, execution, audit — end to end,
+# offline, with no model downloads. Capability comes from the optional extras;
+# nothing in `[project.dependencies]` exists to make a demo look good.
+dependencies = [
+    "pydantic>=2.7",
+    "send2trash>=1.8",
+]
+
+[project.optional-dependencies]
+# The trained intent classifier. ~30 MB, and the system falls back to the rule
+# classifier without it.
+nlp = ["scikit-learn>=1.3", "joblib>=1.3", "numpy>=1.24"]
+# Browser verbs. Also needs `playwright install chromium`.
+browser = ["playwright>=1.40"]
+# sys.info memory/battery/cpu metrics.
+system = ["psutil>=5.9"]
+# Semantic exemplar retrieval. A hashing store is used when this is absent.
+memory = ["chromadb>=0.4", "sentence-transformers>=2.2"]
+# PERSON entities. The rule extractor works without it.
+spacy = ["spacy>=3.7"]
+# LoRA fine-tuning. Needs a GPU; see training/train_lora.py --check.
+train = [
+    "torch>=2.1",
+    "transformers>=4.40",
+    "peft>=0.10",
+    "datasets>=2.18",
+    "trl>=0.9",
+    "pyyaml>=6.0",
+]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "ruff>=0.4",
+]
+# Everything that runs without a GPU.
+all = [
+    "scikit-learn>=1.3", "joblib>=1.3", "numpy>=1.24",
+    "playwright>=1.40", "psutil>=5.9",
+]
+
+[project.scripts]
+maestro = "maestro.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/vinsmoke0003/MAESTRO"
+Documentation = "https://github.com/vinsmoke0003/MAESTRO/tree/main/docs"
+Source = "https://github.com/vinsmoke0003/MAESTRO/tree/main/Project"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["maestro"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    # joblib pickles numpy arrays in a way NumPy 2.5 deprecates. Nothing we
+    # control, and it fires hundreds of times when the intent model loads.
+    "ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning",
+]
+markers = [
+    "slow: tests that build the dataset or run a benchmark suite",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "B008",    # FastAPI/pydantic-style defaults in signatures
+    "SIM108",  # ternaries are not always clearer
+    # zip(strict=) — every remaining call pairs sequences that are equal-length
+    # by construction (labels with predictions, columns with a cursor's own
+    # description). The two places where a length mismatch WOULD be a real bug
+    # — pairing plan actions with their effect manifests in the orchestrator —
+    # pass strict=True explicitly.
+    "B905",
+    # A bare try/except/pass carrying a comment that explains *why* the failure
+    # is ignored reads better than contextlib.suppress, and every instance here
+    # is best-effort cleanup where the comment is the point.
+    "SIM105",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
+"data/*" = ["E402"]      # sys.path bootstrap before imports
+"eval/*" = ["E402"]
+"training/*" = ["E402"]
+
+[tool.coverage.run]
+source = ["maestro"]
+omit = ["maestro/executor/darwin/*", "maestro/executor/win32/*"]

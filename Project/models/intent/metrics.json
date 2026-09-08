@@ -1,0 +1,125 @@
+{
+  "meta": {
+    "trained_at": "2026-09-07T23:16:44",
+    "n_train": 3041,
+    "n_test": 386,
+    "seed": 42,
+    "fit_seconds": 1.48,
+    "pipeline": "TfidfVectorizer(word 1-2 + char_wb 3-5) -> CalibratedClassifierCV(LinearSVC, sigmoid, cv=3)",
+    "note": "The deterministic safety prefilter runs BEFORE this model and cannot be overridden by it.",
+    "test_accuracy": 99.48,
+    "test_macro_f1": 0.9935
+  },
+  "test": {
+    "n": 386,
+    "accuracy": 99.48,
+    "macro_f1": 0.9935,
+    "per_class": {
+      "APP_CONTROL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 17
+      },
+      "APP_LAUNCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "BROWSER_DOWNLOAD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "BROWSER_EXTRACT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "BROWSER_NAVIGATE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "COMPOSE_DRAFT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 14
+      },
+      "FILE_DELETE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 49
+      },
+      "FILE_ORGANIZE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 104
+      },
+      "FILE_READ": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "FILE_SEARCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 52
+      },
+      "FILE_TRANSFORM": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 25
+      },
+      "OUT_OF_SCOPE": {
+        "precision": 1.0,
+        "recall": 0.8667,
+        "f1": 0.9286,
+        "support": 15
+      },
+      "SYSTEM_QUERY": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 11
+      },
+      "SYSTEM_SETTING": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 9
+      },
+      "UNSAFE_REQUEST": {
+        "precision": 0.9355,
+        "recall": 1.0,
+        "f1": 0.9667,
+        "support": 29
+      },
+      "WORKFLOW_RECALL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 18
+      }
+    },
+    "top_confusions": [
+      {
+        "gold": "OUT_OF_SCOPE",
+        "predicted": "UNSAFE_REQUEST",
+        "n": 2
+      }
+    ],
+    "latency_us": 9743.1,
+    "fit_seconds": 1.48
+  }
+}

@@ -1,0 +1,495 @@
+{
+  "rules": {
+    "n": 383,
+    "accuracy": 81.46,
+    "macro_f1": 0.7916,
+    "per_class": {
+      "APP_CONTROL": {
+        "precision": 1.0,
+        "recall": 0.8667,
+        "f1": 0.9286,
+        "support": 15
+      },
+      "APP_LAUNCH": {
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091,
+        "support": 6
+      },
+      "BROWSER_DOWNLOAD": {
+        "precision": 1.0,
+        "recall": 0.4167,
+        "f1": 0.5882,
+        "support": 12
+      },
+      "BROWSER_EXTRACT": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6667,
+        "support": 4
+      },
+      "BROWSER_NAVIGATE": {
+        "precision": 0.5,
+        "recall": 0.8,
+        "f1": 0.6154,
+        "support": 5
+      },
+      "COMPOSE_DRAFT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 16
+      },
+      "FILE_DELETE": {
+        "precision": 1.0,
+        "recall": 0.7021,
+        "f1": 0.825,
+        "support": 47
+      },
+      "FILE_ORGANIZE": {
+        "precision": 0.8713,
+        "recall": 0.8073,
+        "f1": 0.8381,
+        "support": 109
+      },
+      "FILE_READ": {
+        "precision": 0.8571,
+        "recall": 0.4,
+        "f1": 0.5455,
+        "support": 15
+      },
+      "FILE_SEARCH": {
+        "precision": 0.8421,
+        "recall": 1.0,
+        "f1": 0.9143,
+        "support": 48
+      },
+      "FILE_TRANSFORM": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 24
+      },
+      "OUT_OF_SCOPE": {
+        "precision": 0.2667,
+        "recall": 1.0,
+        "f1": 0.4211,
+        "support": 16
+      },
+      "SYSTEM_QUERY": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 10
+      },
+      "SYSTEM_SETTING": {
+        "precision": 1.0,
+        "recall": 0.7778,
+        "f1": 0.875,
+        "support": 9
+      },
+      "UNSAFE_REQUEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28
+      },
+      "WORKFLOW_RECALL": {
+        "precision": 1.0,
+        "recall": 0.3684,
+        "f1": 0.5385,
+        "support": 19
+      }
+    },
+    "top_confusions": [
+      {
+        "gold": "FILE_ORGANIZE",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 17
+      },
+      {
+        "gold": "FILE_DELETE",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 9
+      },
+      {
+        "gold": "FILE_READ",
+        "predicted": "FILE_SEARCH",
+        "n": 9
+      },
+      {
+        "gold": "WORKFLOW_RECALL",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 9
+      },
+      {
+        "gold": "FILE_DELETE",
+        "predicted": "FILE_ORGANIZE",
+        "n": 5
+      },
+      {
+        "gold": "BROWSER_DOWNLOAD",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 4
+      },
+      {
+        "gold": "FILE_ORGANIZE",
+        "predicted": "BROWSER_NAVIGATE",
+        "n": 4
+      },
+      {
+        "gold": "BROWSER_DOWNLOAD",
+        "predicted": "FILE_ORGANIZE",
+        "n": 3
+      },
+      {
+        "gold": "WORKFLOW_RECALL",
+        "predicted": "FILE_ORGANIZE",
+        "n": 3
+      },
+      {
+        "gold": "APP_CONTROL",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 2
+      }
+    ],
+    "latency_us": 198.9,
+    "fit_seconds": 0.0
+  },
+  "tfidf+linearsvc": {
+    "n": 383,
+    "accuracy": 99.74,
+    "macro_f1": 0.9948,
+    "per_class": {
+      "APP_CONTROL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "APP_LAUNCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "BROWSER_DOWNLOAD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "BROWSER_EXTRACT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "BROWSER_NAVIGATE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5
+      },
+      "COMPOSE_DRAFT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 16
+      },
+      "FILE_DELETE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 47
+      },
+      "FILE_ORGANIZE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 109
+      },
+      "FILE_READ": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "FILE_SEARCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 48
+      },
+      "FILE_TRANSFORM": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 24
+      },
+      "OUT_OF_SCOPE": {
+        "precision": 0.9412,
+        "recall": 1.0,
+        "f1": 0.9697,
+        "support": 16
+      },
+      "SYSTEM_QUERY": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474,
+        "support": 10
+      },
+      "SYSTEM_SETTING": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 9
+      },
+      "UNSAFE_REQUEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28
+      },
+      "WORKFLOW_RECALL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 19
+      }
+    },
+    "top_confusions": [
+      {
+        "gold": "SYSTEM_QUERY",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 1
+      }
+    ],
+    "latency_us": 990.3,
+    "fit_seconds": 0.19
+  },
+  "tfidf+logreg": {
+    "n": 383,
+    "accuracy": 99.74,
+    "macro_f1": 0.9948,
+    "per_class": {
+      "APP_CONTROL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "APP_LAUNCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "BROWSER_DOWNLOAD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "BROWSER_EXTRACT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "BROWSER_NAVIGATE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5
+      },
+      "COMPOSE_DRAFT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 16
+      },
+      "FILE_DELETE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 47
+      },
+      "FILE_ORGANIZE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 109
+      },
+      "FILE_READ": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "FILE_SEARCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 48
+      },
+      "FILE_TRANSFORM": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 24
+      },
+      "OUT_OF_SCOPE": {
+        "precision": 0.9412,
+        "recall": 1.0,
+        "f1": 0.9697,
+        "support": 16
+      },
+      "SYSTEM_QUERY": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474,
+        "support": 10
+      },
+      "SYSTEM_SETTING": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 9
+      },
+      "UNSAFE_REQUEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28
+      },
+      "WORKFLOW_RECALL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 19
+      }
+    },
+    "top_confusions": [
+      {
+        "gold": "SYSTEM_QUERY",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 1
+      }
+    ],
+    "latency_us": 1021.7,
+    "fit_seconds": 0.45
+  },
+  "shipping": {
+    "n": 383,
+    "accuracy": 99.74,
+    "macro_f1": 0.9948,
+    "per_class": {
+      "APP_CONTROL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "APP_LAUNCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "BROWSER_DOWNLOAD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12
+      },
+      "BROWSER_EXTRACT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "BROWSER_NAVIGATE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5
+      },
+      "COMPOSE_DRAFT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 16
+      },
+      "FILE_DELETE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 47
+      },
+      "FILE_ORGANIZE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 109
+      },
+      "FILE_READ": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 15
+      },
+      "FILE_SEARCH": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 48
+      },
+      "FILE_TRANSFORM": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 24
+      },
+      "OUT_OF_SCOPE": {
+        "precision": 0.9412,
+        "recall": 1.0,
+        "f1": 0.9697,
+        "support": 16
+      },
+      "SYSTEM_QUERY": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474,
+        "support": 10
+      },
+      "SYSTEM_SETTING": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 9
+      },
+      "UNSAFE_REQUEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28
+      },
+      "WORKFLOW_RECALL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 19
+      }
+    },
+    "top_confusions": [
+      {
+        "gold": "SYSTEM_QUERY",
+        "predicted": "OUT_OF_SCOPE",
+        "n": 1
+      }
+    ],
+    "latency_us": 8128.2,
+    "fit_seconds": 1.26
+  }
+}

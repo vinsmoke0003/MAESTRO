@@ -3,6 +3,8 @@
 
 # local editor/agent settings
 .claude/settings.local.json
+# launch.json carries absolute paths; see Project/scripts/serve_ui.py
+.claude/launch.json
 
 # python
 __pycache__/
@@ -18,4 +20,16 @@ chroma_db/
 # models & large artifacts — reproducible, never committed
 *.gguf
 *.safetensors
-models/
+# Only the LoRA adapters are excluded. Project/models/intent/ (the ~1 MB trained
+# intent classifier) is deliberately tracked: it is what makes a fresh clone
+# work without a training step, and `make train-intent` regenerates it
+# deterministically. A bare `models/` here would have swallowed it — git cannot
+# re-include a file beneath an ignored directory.
+models/planner-lora/
+
+# Project-local state and generated evaluation records
+Project/.venv/
+Project/eval/results/raw/
+Project/training/data/
+Project/.pytest_cache/
+Project/.ruff_cache/

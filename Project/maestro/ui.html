@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAESTRO workspace</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1c1f24; --muted: #6a7280; --line: #e3e6eb;
+    --accent: #2b5fd9; --ok: #1e8e4e; --warn: #b7791f; --bad: #c0392b; --block: #5b2c6f;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 14px 22px; background: #fff; border-bottom: 1px solid var(--line);
+           display: flex; align-items: baseline; gap: 16px; }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
+  header .sub { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px;
+         padding: 16px 22px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+          padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase;
+             letter-spacing: .08em; color: var(--muted); }
+  textarea { width: 100%; min-height: 64px; resize: vertical; padding: 10px;
+             border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  input[type=text] { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+                     font: inherit; }
+  button { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+           background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { color: var(--bad); border-color: var(--bad); }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+           font-weight: 600; font-family: var(--mono); color: #fff; background: var(--muted); }
+  .R0 { background: var(--ok); } .R1 { background: #3b8ea5; } .R2 { background: var(--warn); }
+  .R3 { background: var(--bad); } .BLOCKED { background: var(--block); }
+  .status { font-weight: 600; }
+  .status.completed, .status.previewed { color: var(--ok); }
+  .status.refused, .status.blocked, .status.denied, .status.failed,
+  .status.rolled_back { color: var(--bad); }
+  .status.clarified, .status.cancelled { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; border-top: 0; }
+  td code, .mono { font-family: var(--mono); font-size: 12px; }
+  .why { color: var(--muted); font-size: 12px; }
+  .why b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+  pre { background: #f0f2f5; padding: 10px; border-radius: 6px; overflow-x: auto;
+        font: 12px/1.4 var(--mono); margin: 8px 0 0; white-space: pre-wrap; }
+  .muted { color: var(--muted); }
+  .hidden { display: none !important; }
+  .opt { display: block; width: 100%; text-align: left; margin-top: 6px; }
+  .hist { border-top: 1px solid var(--line); padding: 8px 0; font-size: 13px; }
+  .hist:first-of-type { border-top: 0; }
+  .hist .i { display: block; }
+  .hist .m { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  .hist button { padding: 3px 9px; font-size: 12px; margin-top: 4px; }
+  .step-ok::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+  .step-bad::before { content: "✗ "; color: var(--bad); font-weight: 700; }
+  .step-wait::before { content: "· "; color: var(--muted); }
+  .bar { height: 6px; background: #eef0f3; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+  .note { padding: 8px 10px; border-left: 3px solid var(--warn); background: #fff9ee;
+          font-size: 13px; margin-top: 8px; }
+  .note.bad { border-color: var(--bad); background: #fdf1ef; }
+  .note.ok { border-color: var(--ok); background: #eff8f2; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 13px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MAESTRO</h1>
+  <span class="sub" id="pipeline">…</span>
+</header>
+<main>
+<section>
+  <div class="card">
+    <h2>Instruction</h2>
+    <textarea id="instruction" placeholder="e.g. move the pdfs from Downloads to Documents/Invoices"></textarea>
+    <div class="row">
+      <button class="primary" id="btn-plan">Preview plan</button>
+      <span class="muted">Nothing runs at this step — the preview is a dry run.</span>
+    </div>
+    <div class="row" id="examples"></div>
+  </div>
+
+  <div class="card hidden" id="card-clarify">
+    <h2>MAESTRO needs one detail</h2>
+    <div id="clarify-q" style="font-size:15px"></div>
+    <div id="clarify-opts"></div>
+    <div class="row">
+      <input type="text" id="clarify-answer" placeholder="type an answer, or pick an option" style="flex:1">
+      <button class="primary" id="btn-answer">Answer</button>
+      <button id="btn-cancel">Cancel</button>
+    </div>
+    <div class="muted" id="clarify-rounds"></div>
+  </div>
+
+  <div class="card hidden" id="card-verdict">
+    <h2>Outcome</h2>
+    <div id="verdict"></div>
+  </div>
+
+  <div class="card hidden" id="card-preview">
+    <h2>Action preview</h2>
+    <div class="row" style="margin-top:0">
+      <span class="badge" id="pv-risk">R?</span>
+      <span>gate: <b id="pv-gate"></b></span>
+      <span class="muted">intent <code id="pv-intent"></code> · planner <code id="pv-planner"></code></span>
+    </div>
+    <table id="pv-actions">
+      <thead><tr><th>#</th><th>verb</th><th>what</th><th>risk</th><th>why</th><th>undo</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="pv-effects"></div>
+    <div id="pv-critic"></div>
+    <div class="row" id="pv-token-row">
+      <label>High-risk plan — type exactly <code id="pv-token"></code></label>
+      <input type="text" id="typed" placeholder="CONFIRM …">
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-approve">Approve and run</button>
+      <button class="danger" id="btn-deny">Deny</button>
+      <span class="muted">Approval is tied to this exact plan; if replanning changes it, the run is denied.</span>
+    </div>
+  </div>
+
+  <div class="card hidden" id="card-progress">
+    <h2>Execution</h2>
+    <div class="bar"><i id="bar" style="width:0"></i></div>
+    <div id="steps"></div>
+    <div id="result"></div>
+  </div>
+</section>
+
+<aside>
+  <div class="card">
+    <h2>Task history</h2>
+    <div id="history" class="muted">loading…</div>
+    <div class="row"><button id="btn-undo-last">Undo last completed run</button></div>
+    <div id="undo-out"></div>
+  </div>
+  <div class="card">
+    <h2>Audit log</h2>
+    <div id="audit" class="muted">…</div>
+  </div>
+</aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} :
+    { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+  return r.json();
+}
+
+const EXAMPLES = [
+  'move the pdfs from Downloads to Documents/Invoices',
+  'organise Downloads by file type',
+  'move my files',
+  'delete everything in Documents permanently',
+  'summarize Documents/notes.txt',
+  'how much disk space is left',
+];
+
+function renderExamples() {
+  $('examples').innerHTML = '<span class="muted">try:</span> ' + EXAMPLES.map(e =>
+    `<button data-ex="${esc(e)}" style="padding:4px 9px;font-size:12px">${esc(e)}</button>`).join(' ');
+  $('examples').querySelectorAll('button').forEach(b =>
+    b.onclick = () => { $('instruction').value = b.dataset.ex; });
+}
+
+function verdictNote(t) {
+  const cls = (t.status === 'refused' || t.status === 'blocked' || t.status === 'denied'
+               || t.status === 'failed' || t.status === 'rolled_back') ? 'bad'
+            : (t.status === 'completed' || t.status === 'previewed') ? 'ok' : '';
+  return `<div class="note ${cls}"><span class="status ${esc(t.status)}">${esc(t.status)}</span>
+          — ${esc(t.message)}</div>`;
+}
+
+function renderTurn(t) {
+  show('card-verdict', true);
+  $('verdict').innerHTML = verdictNote(t) + (t.error ? `<pre>${esc(t.error)}</pre>` : '');
+  show('card-clarify', t.status === 'clarified');
+  show('card-preview', t.status === 'previewed');
+
+  if (t.status === 'clarified' && t.clarification) {
+    $('clarify-q').textContent = t.clarification.question;
+    $('clarify-opts').innerHTML = (t.clarification.options || []).map((o, i) =>
+      `<button class="opt" data-o="${esc(o)}">${i + 1}. ${esc(o)}</button>`).join('');
+    $('clarify-opts').querySelectorAll('button').forEach(b =>
+      b.onclick = () => answer(b.dataset.o));
+    $('clarify-answer').value = '';
+    $('clarify-rounds').textContent = `round ${t.rounds} · the original instruction is kept; answer, pick a number, or cancel`;
+    $('clarify-answer').focus();
+  }
+
+  if (t.status === 'previewed') {
+    $('pv-risk').textContent = t.risk; $('pv-risk').className = 'badge ' + t.risk;
+    $('pv-gate').textContent = t.gate;
+    $('pv-intent').textContent = `${t.intent} (${Number(t.intent_confidence).toFixed(2)})`;
+    $('pv-planner').textContent = t.strategy || 'rule';
+    const tb = $('pv-actions').querySelector('tbody');
+    tb.innerHTML = t.actions.map((a, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><code>${esc(a.verb)}</code></td>
+        <td><code>${esc(JSON.stringify(a.args))}</code>${a.produces ? `<div class="why">→ $${esc(a.produces)}</div>` : ''}</td>
+        <td><span class="badge ${esc(a.risk)}">${esc(a.risk)}</span></td>
+        <td class="why">${a.reasons.map(r => esc(r)).join('<br>') || '—'}
+            ${a.rules_fired.length ? `<div>rules: <b>${a.rules_fired.map(esc).join('</b> <b>')}</b></div>` : ''}</td>
+        <td>${a.undo ? `<code>${esc(a.undo)}</code>` : '<span class="muted">none</span>'}</td>
+      </tr>`).join('');
+    const eff = t.manifests.map(m => {
+      const bits = [];
+      if (m.files_touched) bits.push(`${m.files_touched} file(s)`);
+      if (m.bytes_affected) bits.push(`${(m.bytes_affected / 1024).toFixed(1)} KB`);
+      if (m.creates.length) bits.push(`creates ${m.creates.length}`);
+      if (m.removes.length) bits.push(`removes ${m.removes.length}`);
+      if (m.collisions.length) bits.push(`<b style="color:var(--warn)">${m.collisions.length} collision(s)</b>`);
+      if (m.external.length) bits.push(`network → ${m.external.map(esc).join(', ')}`);
+      if (m.unknowns.length) bits.push(`<span class="muted">unknown: ${m.unknowns.map(esc).join('; ')}</span>`);
+      return `<li>${esc(m.summary)} ${bits.length ? '<span class="why">(' + bits.join(' · ') + ')</span>' : ''}</li>`;
+    }).join('');
+    $('pv-effects').innerHTML = eff ? `<div style="margin-top:10px"><b>Dry-run effects</b><ul style="margin:4px 0 0 18px;padding:0">${eff}</ul></div>` : '';
+    $('pv-critic').innerHTML = t.critic.length ? `<div class="note">Critic: ${t.critic.map(c =>
+      esc(c.message || c.detail || JSON.stringify(c))).join('<br>')}</div>` : '';
+    show('pv-token-row', !!t.token);
+    $('pv-token').textContent = t.token || '';
+    $('typed').value = '';
+  }
+}
+
+async function plan() {
+  const text = $('instruction').value.trim();
+  if (!text) return;
+  $('btn-plan').disabled = true;
+  show('card-progress', false);
+  try { renderTurn(await api('/api/plan', {instruction: text})); }
+  finally { $('btn-plan').disabled = false; refreshSide(); }
+}
+
+async function answer(a) {
+  const text = (a ?? $('clarify-answer').value).trim();
+  renderTurn(await api('/api/answer', {answer: text}));
+  refreshSide();
+}
+
+async function approve() {
+  $('btn-approve').disabled = true;
+  const r = await api('/api/approve', {typed: $('typed').value});
+  $('btn-approve').disabled = false;
+  if (r.error) { $('verdict').innerHTML = `<div class="note bad">${esc(r.error)}</div>`; return; }
+  show('card-preview', false); show('card-progress', true);
+  $('steps').innerHTML = ''; $('result').innerHTML = ''; $('bar').style.width = '0';
+  poll(r.total || 1);
+}
+
+async function poll(total) {
+  const p = await api('/api/progress');
+  $('steps').innerHTML = p.steps.map(s =>
+    `<div class="${s.ok ? 'step-ok' : 'step-bad'}"><code>${esc(s.action_id)}</code> <code>${esc(s.verb)}</code>
+     <span class="why">${esc(s.detail)} · ${s.ms} ms${s.files_touched ? ' · ' + s.files_touched + ' file(s)' : ''}</span></div>`).join('');
+  $('bar').style.width = Math.min(100, 100 * p.steps.length / Math.max(total, 1)) + '%';
+  if (!p.done) return setTimeout(() => poll(total), 250);
+  $('bar').style.width = '100%';
+  const t = p.result || {};
+  $('result').innerHTML = verdictNote(t) + (t.approval ? `<div class="why">consent: ${esc(t.approval.method)}${t.approval.note ? ' — ' + esc(t.approval.note) : ''}</div>` : '');
+  refreshSide();
+}
+
+async function deny() {
+  const r = await api('/api/deny', {});
+  show('card-preview', false);
+  $('verdict').innerHTML = `<div class="note">${esc(r.message)}</div>`;
+  refreshSide();
+}
+
+async function undo(episodeId) {
+  $('undo-out').innerHTML = '<span class="muted">reversing…</span>';
+  const r = await api('/api/undo', {episode_id: episodeId || null});
+  $('undo-out').innerHTML = `<div class="note ${r.ok ? 'ok' : 'bad'}">${r.ok ? 'verified' : esc(r.message || 'completed with problems')}</div>` +
+    (r.render ? `<pre>${esc(r.render)}</pre>` : '');
+  refreshSide();
+}
+
+async function refreshSide() {
+  const [h, a, s] = await Promise.all([api('/api/history'), api('/api/audit'), api('/api/state')]);
+  $('pipeline').textContent = s.pipeline;
+  $('history').innerHTML = h.length ? h.map(r => `
+    <div class="hist">
+      <span class="i">${esc(r.instruction)}</span>
+      <span class="m"><span class="status ${esc(r.status)}">${esc(r.status)}</span> · ${esc(r.risk || '')} ${esc(r.gate || '')} · ${esc(r.intent || '')} · ${esc(r.episode_id || '').slice(0, 8)}</span>
+      ${r.undoable ? `<button data-e="${esc(r.episode_id)}">Undo (verified)</button>` : ''}
+    </div>`).join('') : '<span class="muted">no runs yet</span>';
+  $('history').querySelectorAll('button').forEach(b => b.onclick = () => undo(b.dataset.e));
+  $('audit').innerHTML = !a.available ? 'audit log not configured' :
+    `<div>${a.events} events · chain <b style="color:${a.intact ? 'var(--ok)' : 'var(--bad)'}">${a.intact ? 'intact' : 'BROKEN'}</b></div>` +
+    a.tail.map(e => `<div class="m mono" style="font-size:11px"><b>${esc(e.event)}</b> ${esc(e.verb)} <span class="muted">${esc(e.detail)}</span></div>`).join('');
+}
+
+$('btn-plan').onclick = plan;
+$('btn-answer').onclick = () => answer();
+$('btn-cancel').onclick = () => answer('cancel');
+$('btn-approve').onclick = approve;
+$('btn-deny').onclick = deny;
+$('btn-undo-last').onclick = () => undo(null);
+$('instruction').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) plan(); });
+$('clarify-answer').addEventListener('keydown', e => { if (e.key === 'Enter') answer(); });
+renderExamples();
+refreshSide();
+</script>
+</body>
+</html>

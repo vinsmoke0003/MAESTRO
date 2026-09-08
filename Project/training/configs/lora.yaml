@@ -1,0 +1,37 @@
+# LoRA configuration — docs/05-NLP-AND-TRAINING.md §3
+#
+# Every value here is the one named in the spec. Change one at a time and
+# re-run `training/evaluate_planner.py`; a sweep where two things moved tells
+# you nothing about either.
+
+base_model: Qwen/Qwen2.5-3B-Instruct
+
+# Rank. Sweep {8, 16, 32} — docs/05 §3. Higher rank is not automatically better
+# on 3k examples; 32 tends to overfit before epoch 3 on a dataset this size.
+rank: 16
+alpha: 32          # 2x rank, per the spec
+dropout: 0.05
+target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+learning_rate: 2.0e-4
+lr_scheduler: cosine
+warmup_ratio: 0.03
+
+# Watch the validation loss. docs/05 §3: a 3B model on ~3k pairs overfits by
+# roughly epoch 4, so 3 is the default and 4+ needs evidence from the curve.
+epochs: 3
+
+batch_size: 4
+grad_accum: 4      # effective batch 16
+
+# Checked against the real distribution by `training/prepare_data.py`, which
+# refuses to stay quiet if the longest example exceeds this. Truncation eats the
+# END of the target — the closing braces of the JSON plan — so a too-small value
+# silently teaches the model to emit invalid JSON.
+max_seq_len: 2048
+
+precision: bf16
+
+# Run this three times (42, 43, 44) and report mean +/- std. A single-seed
+# result is not evidence (docs/05 §3).
+seed: 42

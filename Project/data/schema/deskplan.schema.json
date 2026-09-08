@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DeskPlan record",
+  "type": "object",
+  "required": [
+    "id",
+    "instruction",
+    "paraphrase_group",
+    "intent",
+    "expected_behavior",
+    "difficulty",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1
+    },
+    "paraphrase_group": {
+      "type": "string"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "enum": [
+            "darwin",
+            "win32"
+          ]
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "known_paths": {
+          "type": "object"
+        },
+        "date": {
+          "type": "string"
+        }
+      }
+    },
+    "intent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "value",
+          "span"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "span": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "slots": {
+      "type": "object"
+    },
+    "plan": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "full Action IR; null for clarify/refuse rows"
+    },
+    "plan_risk": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        null
+      ]
+    },
+    "gate": {
+      "enum": [
+        "auto",
+        "confirm",
+        "typed_confirm",
+        "refuse",
+        null
+      ]
+    },
+    "expected_behavior": {
+      "enum": [
+        "execute_auto",
+        "execute_with_consent",
+        "clarify",
+        "refuse",
+        "summarize_only"
+      ]
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "source": {
+      "enum": [
+        "human",
+        "template",
+        "paraphrase",
+        "adversarial",
+        "llm_generated",
+        "episode"
+      ]
+    },
+    "verified_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "split": {
+      "enum": [
+        "train",
+        "val",
+        "test",
+        null
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

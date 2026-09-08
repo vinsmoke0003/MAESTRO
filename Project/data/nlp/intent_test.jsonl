@@ -1,0 +1,386 @@
+{"text": "quit spotify", "label": "APP_CONTROL", "difficulty": "easy", "source": "human"}
+{"text": "shut Spotify down", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "close Spotify", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "exit Spotify", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "kill Spotify", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "i need you to quit Spotify when you can", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "go ahead and kill Spotify thanks", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "hey maestro, close Spotify please", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "could you quit spotify for me", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "quit Terminal", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "shut Terminal down", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "exit Terminal", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "kill Terminal", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "close Terminal", "label": "APP_CONTROL", "difficulty": "easy", "source": "template"}
+{"text": "can you quit Terminal thanks", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "exit Terminal when you can", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "can you shut Terminal down right now", "label": "APP_CONTROL", "difficulty": "easy", "source": "paraphrase"}
+{"text": "open chrome", "label": "APP_LAUNCH", "difficulty": "easy", "source": "human"}
+{"text": "fire up Chrome", "label": "APP_LAUNCH", "difficulty": "easy", "source": "template"}
+{"text": "can you open Chrome", "label": "APP_LAUNCH", "difficulty": "easy", "source": "template"}
+{"text": "please launch Chrome for me", "label": "APP_LAUNCH", "difficulty": "easy", "source": "template"}
+{"text": "start Chrome", "label": "APP_LAUNCH", "difficulty": "easy", "source": "template"}
+{"text": "launch Chrome", "label": "APP_LAUNCH", "difficulty": "easy", "source": "template"}
+{"text": "download https://www.python.org/downloads/ to the archive folder", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "human"}
+{"text": "save https://www.python.org/downloads/ into the archive folder", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "can you download https://www.python.org/downloads/ to the archive folder when you can", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "paraphrase"}
+{"text": "quickly save https://www.python.org/downloads/ into the archive folder when you can", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "paraphrase"}
+{"text": "fetch https://arxiv.org/list/cs.AI/recent and put it in Documents/Invoices", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "could you fetch https://arxiv.org/list/cs.AI/recent and put it in Documents/Invoices please", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "paraphrase"}
+{"text": "download https://www.python.org/downloads/ to Documents/Finance", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "save https://huggingface.co/datasets into Documents/Semester", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "quickly save https://huggingface.co/datasets into Documents/Semester thanks", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "paraphrase"}
+{"text": "fetch https://huggingface.co/datasets and put it in Pictures/Screenshots", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "save https://docs.python.org/3/library/pathlib.html into Documents/Finance", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "download https://docs.python.org/3/library/pathlib.html to Documents/Finance", "label": "BROWSER_DOWNLOAD", "difficulty": "medium", "source": "template"}
+{"text": "get the page text from https://www.python.org/downloads/", "label": "BROWSER_EXTRACT", "difficulty": "easy", "source": "template"}
+{"text": "extract the text from https://www.python.org/downloads/", "label": "BROWSER_EXTRACT", "difficulty": "easy", "source": "template"}
+{"text": "grab the text on https://www.python.org/downloads/", "label": "BROWSER_EXTRACT", "difficulty": "easy", "source": "template"}
+{"text": "scrape the content of https://www.python.org/downloads/", "label": "BROWSER_EXTRACT", "difficulty": "easy", "source": "template"}
+{"text": "open https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "template"}
+{"text": "navigate to https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "template"}
+{"text": "go to https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "template"}
+{"text": "visit https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "template"}
+{"text": "pull up https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "template"}
+{"text": "i need you to navigate to https://news.ycombinator.com", "label": "BROWSER_NAVIGATE", "difficulty": "easy", "source": "paraphrase"}
+{"text": "make me a note about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "easy", "source": "human"}
+{"text": "draft a note about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "easy", "source": "template"}
+{"text": "write a note about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "easy", "source": "template"}
+{"text": "write an email to jairaj@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "prepare an email for jairaj@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "prepare an email for jairaj@example.com about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "draft an email to jairaj@example.com about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "write an email to jairaj@example.com about my leave request", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "compose a message to jairaj@example.com regarding my leave request", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "prepare an email for team@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "human"}
+{"text": "write an email to team@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "draft an email to team@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "template"}
+{"text": "would you mind if you prepare an email for team@example.com about the project status for me", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "paraphrase"}
+{"text": "i want you to draft an email to team@example.com about the project status", "label": "COMPOSE_DRAFT", "difficulty": "medium", "source": "paraphrase"}
+{"text": "clean up my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "human"}
+{"text": "free up some space in Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "clean up Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "clear out my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "tidy up Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "sort out my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "declutter Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "tidy up my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "Desktop is a mess, deal with it", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "free up some space in my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "declutter my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "sort out Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "my desktop is a mess, deal with it", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "clear out Desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "template"}
+{"text": "i want you to Desktop is a mess, deal with it thanks", "label": "FILE_DELETE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "can you declutter my desktop", "label": "FILE_DELETE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "clear the PDFs out of the inbox folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "bin every PDF in the inbox folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "remove all pdfs from the inbox folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "get rid of the PDFs in the inbox folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "please get rid of the PDFs in the inbox folder right now", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "get rid of the old zip files in Downloads", "label": "FILE_DELETE", "difficulty": "medium", "source": "human"}
+{"text": "delete the zip files in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "trash the zip files sitting in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "I don't need the zip files in Downloads any more, remove them", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "remove all zip files from Downloads", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "I don't need the zip files in my Downloads folder any more, remove them", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "delete the zip files in Downloads", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "bin every zip in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "could you trash the zip files sitting in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "go ahead and remove all zip files from Downloads please", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "delete the markdown files in Desktop", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "remove all markdown files from Desktop", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "I don't need the videos in Pictures any more, remove them", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "bin every spreadsheet in my workspace", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "remove all presentations from Documents", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "I don't need the photos in Pictures any more, remove them", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "clear the photos out of Pictures", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "remove all photos from Pictures", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "bin every photo in Pictures", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, clear the photos out of Pictures for me", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "i want you to remove all photos from Pictures thanks", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "delete the spreadsheets in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "trash the spreadsheets sitting in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "get rid of the spreadsheets in Downloads", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "I don't need the spreadsheets in Downloads any more, remove them", "label": "FILE_DELETE", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, trash the spreadsheets sitting in my Downloads folder", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "can you get rid of the spreadsheets in Downloads thanks", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "quickly I don't need the spreadsheets in Downloads any more, remove them please", "label": "FILE_DELETE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "take the presentations modified in the last 2 weeks in Downloads and put them in Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move presentations I touched in the last 2 weeks from Downloads to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "go ahead and take the presentations modified in the last 2 weeks in Downloads and put them in Documents/Invoices when you can", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move the text files from the last 2 weeks in Downloads to Documents/Reports", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move photos I touched in the past month from my Downloads folder to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move zip files I touched in the past month from my desktop to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move the markdown files from the past year in the inbox folder to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move the screenshots from the past year in my Downloads folder to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type xlsx changed in the past month from my Downloads folder to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move zip files I touched in the last 3 days from the inbox folder to Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move the PDFs from the past month in Pictures to Documents/Reports", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move spreadsheets I touched in the past year from Desktop to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type md changed in last week from Pictures to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "please move everything of type md changed in last week from Pictures to Documents/Semester thanks", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move the PDFs from the past month in my desktop to Documents/Reports", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type pdf changed in the past year from Documents to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "go ahead and move everything of type pdf changed in the past year from Documents to Documents/Invoices for me", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "take the markdown files modified in the last 2 weeks in Desktop and put them in Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "split the desktop into folders by extension", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "human"}
+{"text": "group everything on my desktop by type please", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "human"}
+{"text": "split Desktop into folders by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "organise Desktop by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "organize Desktop by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "sort Desktop into subfolders by type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "organise my desktop by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "organize my desktop by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "tidy Desktop up by grouping files by extension", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "split my desktop into folders by file type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "sort my desktop into subfolders by type", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "tidy my desktop up by grouping files by extension", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "can you tidy Desktop up by grouping files by extension when you can", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move the Word documents from the past year in Desktop to Documents/Reports", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "take the text files modified in last week in the inbox folder and put them in Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "please take the text files modified in last week in the inbox folder and put them in Pictures/Screenshots when you can", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move the videos from the past month in my workspace to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move the spreadsheets from the past year in my workspace to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "could you move the spreadsheets from the past year in my workspace to Documents/Invoices for me", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move everything of type xlsx changed in the past month from Desktop to Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "i want you to move everything of type xlsx changed in the past month from Desktop to Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move my files", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "human"}
+{"text": "i need you to move my files", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "paraphrase"}
+{"text": "move Word documents I touched in the last 24 hours from Downloads to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type docx changed in the last 24 hours from Downloads to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "take the spreadsheets modified in the past year in my Downloads folder and put them in the archive folder", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type pdf changed in the last 2 weeks from the inbox folder to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move the zip files from the last 24 hours in Downloads to Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type zip changed in the last 24 hours from my Downloads folder to Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "move everything of type png changed in the last 24 hours from my workspace to Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "hard", "source": "template"}
+{"text": "spreadsheets from Documents need to go to Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "transfer the csv files out of Documents and into Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "quickly transfer the csv files out of Documents and into Documents/Semester thanks", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "transfer the markdown files out of my desktop and into Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move all markdown files from my desktop to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "transfer the markdown files out of my desktop and into Documents/Semester right now", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "please relocate the zip files in Downloads to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "human"}
+{"text": "shift every zip in Downloads over to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the zip files in my Downloads folder under the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "take the zip files from my Downloads folder and move them to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "sort the zip files in Downloads into the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "i want you to shift every zip in Downloads over to the archive folder for me", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "put the csv files from my Downloads folder in Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "can you move my csv files from my Downloads folder to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "please move all the Word documents sitting in Desktop to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the spreadsheets in Documents under the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "archive the spreadsheets from Documents to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "transfer the zip files out of Desktop and into Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "relocate all zip files from my desktop to Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move the zip files in my desktop into Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "put the zip files from my desktop in Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the text files in Desktop under Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "take the text files from my desktop and move them to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "can you move my text files from Desktop to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "can you move my text files from my desktop to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "sort the text files in Desktop into Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "sort the videos in my workspace into the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "shift every photo in Documents over to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the videos in Documents under Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "put the csv files from my desktop in Documents/Invoices", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "please move all the spreadsheets sitting in Downloads to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "archive the videos from my desktop to the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "archive the text files from Desktop to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "could you archive the text files from Desktop to Documents/Notes right now", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "put the Word documents from my desktop in Documents/Reports", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "can you put the Word documents from my desktop in Documents/Reports thanks", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "file the Word documents in Pictures under Documents/Assignments", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, file the Word documents in Pictures under Documents/Assignments when you can", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "markdown files from the inbox folder need to go to Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "archive the zip files from the inbox folder to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move all presentations from Downloads to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the photos in Pictures under the archive folder", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "I want the zip files in my Downloads folder moved to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "relocate all zip files from Downloads to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, relocate all zip files from Downloads to Documents/Finance when you can", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "text files from my desktop need to go to Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move the text files in my desktop into Pictures/Screenshots", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "I want the photos in Downloads moved to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "archive the photos from my Downloads folder to Documents/Finance", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "I want the PDFs in my workspace moved to Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move the pdfs in my workspace into Documents/Notes", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "file the videos in my workspace under Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "relocate all videos from my workspace to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move all videos from my workspace to Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "move the videos in my workspace into Documents/Semester", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, relocate all videos from my workspace to Documents/Semester right now", "label": "FILE_ORGANIZE", "difficulty": "medium", "source": "paraphrase"}
+{"text": "open the screenshots in my Downloads folder and tell me what is in them", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "summarise the screenshots in my Downloads folder", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "what do the screenshots in my Downloads folder say", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "can you open the screenshots in my Downloads folder and tell me what is in them for me", "label": "FILE_READ", "difficulty": "medium", "source": "paraphrase"}
+{"text": "quickly summarise the screenshots in my Downloads folder", "label": "FILE_READ", "difficulty": "medium", "source": "paraphrase"}
+{"text": "read the spreadsheets in Downloads", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "open the spreadsheets in my Downloads folder and tell me what is in them", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "quickly read the spreadsheets in Downloads", "label": "FILE_READ", "difficulty": "medium", "source": "paraphrase"}
+{"text": "open the spreadsheets in the inbox folder and tell me what is in them", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "what do the spreadsheets in the inbox folder say", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "go ahead and open the spreadsheets in the inbox folder and tell me what is in them thanks", "label": "FILE_READ", "difficulty": "medium", "source": "paraphrase"}
+{"text": "open the Word documents in Downloads and tell me what is in them", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "what do the Word documents in Downloads say", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "read the Word documents in my Downloads folder", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "summarise the Word documents in Downloads", "label": "FILE_READ", "difficulty": "medium", "source": "template"}
+{"text": "look for zip files inside my workspace", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "what text files do I have in my desktop", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "what text files do I have in Desktop", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "show me the text files in my desktop", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "search my desktop for text files", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "find all text files in Desktop", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "where are my text files in my desktop", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "search Desktop for text files", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "i want you to find all text files in Desktop for me", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "where are my text files in my desktop thanks", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "what text files do I have in my desktop please", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "show me the text files in my desktop please", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "i want you to search my desktop for text files right now", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "show me the photos in the inbox folder", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "find all pdfs in Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "where are my PDFs in Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "look for pdfs inside Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "list every PDF file under Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "where are my pdfs in Pictures for me", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "where are my PDFs in Pictures thanks", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "show me the spreadsheets in Documents", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "search Documents for spreadsheets", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "look for spreadsheets inside Documents", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "show me the photos in my Downloads folder", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "which photos are in my Downloads folder", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "search Downloads for photos", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "find all photos in Downloads", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "look for photos inside Downloads", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "where are my photos in Downloads", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "what photos do I have in Downloads", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "find all photos in my Downloads folder", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "which photos are in my Downloads folder for me", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "would you mind if you show me the photos in my Downloads folder right now", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "go ahead and find all photos in Downloads for me", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "what photos do I have in Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "list every photo file under Pictures", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "what photos do I have in Pictures thanks", "label": "FILE_SEARCH", "difficulty": "easy", "source": "paraphrase"}
+{"text": "where are my Word documents in Documents", "label": "FILE_SEARCH", "difficulty": "easy", "source": "template"}
+{"text": "list the videos in Documents from the past year", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "show me pdfs in Desktop modified in the past month", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "list the videos in Downloads from the last 3 days", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "go ahead and list the videos in Downloads from the last 3 days when you can", "label": "FILE_SEARCH", "difficulty": "medium", "source": "paraphrase"}
+{"text": "find the markdown files in Downloads from the last 2 weeks", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "show me PDFs in Pictures modified in the past year", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "show me photos in my desktop modified in the last 24 hours", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "which zip files in Documents did I change in the last 2 weeks", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "list the presentations in Pictures from the past year", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "list the PDFs in my workspace from the last 3 days", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "quickly list the PDFs in my workspace from the last 3 days right now", "label": "FILE_SEARCH", "difficulty": "medium", "source": "paraphrase"}
+{"text": "which photos in Pictures did I change in last week", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "which presentations in Documents did I change in the past month", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "list the zip files in my workspace from the last 24 hours", "label": "FILE_SEARCH", "difficulty": "medium", "source": "template"}
+{"text": "copy the markdown files from my Downloads folder to Documents/Semester", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "copy the spreadsheets from my Downloads folder to Documents/Semester", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "i need you to copy the spreadsheets from my Downloads folder to Documents/Semester thanks", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "paraphrase"}
+{"text": "copy zip files out of the inbox folder into Documents/Semester", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "i need you to copy zip files out of the inbox folder into Documents/Semester thanks", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "paraphrase"}
+{"text": "copy spreadsheets out of the inbox folder into Documents/Reports", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the spreadsheets in Documents into Documents/Reports", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the presentations in my Downloads folder into Documents/Assignments", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the screenshots in the inbox folder into Documents/Notes", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "make a copy of every screenshot in the inbox folder in Documents/Notes", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "back up all screenshots in the inbox folder to Documents/Notes", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "copy PDFs out of Downloads into Documents/Reports", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the markdown files in my Downloads folder into Pictures/Screenshots", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "quickly duplicate the markdown files in my Downloads folder into Pictures/Screenshots please", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "paraphrase"}
+{"text": "copy videos out of my workspace into Documents/Invoices", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "quickly copy videos out of my workspace into Documents/Invoices", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "paraphrase"}
+{"text": "back up all videos in Documents to Documents/Semester", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "make a copy of every markdown file in Downloads in Documents/Reports", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the markdown files in Downloads into Documents/Reports", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "duplicate the markdown files in the inbox folder into Documents/Notes", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "make a copy of every zip in Pictures in the archive folder", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "copy PDFs out of Pictures into Documents/Invoices", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "back up all pdfs in Documents to Documents/Finance", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "hey maestro, back up all pdfs in Documents to Documents/Finance right now", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "paraphrase"}
+{"text": "copy spreadsheets out of my workspace into Pictures/Screenshots", "label": "FILE_TRANSFORM", "difficulty": "medium", "source": "template"}
+{"text": "what is the weather like in hyderabad", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "how hot is it in pune today", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "play some music on the radio", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "can you play some music on the radio please", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "paraphrase"}
+{"text": "explain quantum entanglement", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "human"}
+{"text": "go ahead and explain quantum entanglement when you can", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "paraphrase"}
+{"text": "remind me to call the dad later", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "please remind me to call the dad later please", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "paraphrase"}
+{"text": "write an essay on cricket", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "what is the weather like in delhi", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "book me a flight to kolkata", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "tell me a joke about the stock market", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "please tell me a joke about the stock market right now", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "paraphrase"}
+{"text": "write a poem about machine learning", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "what is the capital of norway", "label": "OUT_OF_SCOPE", "difficulty": "easy", "source": "template"}
+{"text": "what is my storage", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "what's my battery at", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "human"}
+{"text": "check my charge", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "check my disk space", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "would you mind if you check my disk space thanks", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "paraphrase"}
+{"text": "what version of macos am I on", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "check my ram usage", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "human"}
+{"text": "what os is this machine running", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "what platform is this", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "how is my available memory doing", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "tell me the free space", "label": "SYSTEM_QUERY", "difficulty": "easy", "source": "template"}
+{"text": "turn the volume to 25%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "set the volume to 25%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "change the volume to 25 percent", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "put the volume at 25%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "put the volume at 80%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "change the volume to 80 percent", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "set the volume to 80%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "turn the volume to 80%", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "template"}
+{"text": "hey maestro, turn the volume to 80% for me", "label": "SYSTEM_SETTING", "difficulty": "easy", "source": "paraphrase"}
+{"text": "send a message to guide@amity.edu about the assignment submission", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "send a message to jairaj@example.com about the assignment submission", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "send a message to shashank@example.com about the assignment submission", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "send a message to rajni.sehgal@amity.edu about the assignment submission", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "i want you to send a message to guide@amity.edu about the assignment submission when you can", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "paraphrase"}
+{"text": "disable the antivirus for a minute", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "human"}
+{"text": "get past the captcha on the signup page", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "delete the photos in Documents for good", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "get rid of the text files in my Downloads folder without using the recycle bin", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "mail the Word documents from Documents to team@example.com", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "could you mail the Word documents from Documents to team@example.com", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "paraphrase"}
+{"text": "purge the photos from my desktop", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "checkout my basket on the shopping site", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "delete the presentations in my desktop for good", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "mail the zip files from Downloads to shashank@example.com", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "get rid of the zip files in Documents without using the recycle bin", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "fetch my private key and save it in my desktop", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "fetch my private key and save it in Desktop", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "can you fetch my private key and save it in my desktop please", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "paraphrase"}
+{"text": "nuke the Word documents in Documents, I never want to see them again", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "get rid of the photos in Documents without using the recycle bin", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "erase the markdown files in Downloads permanently", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "transfer money to this upi id", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "human"}
+{"text": "destroy the markdown files sitting in my workspace", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "send the Word documents in my Downloads folder over to rajni.sehgal@amity.edu right now", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "send the Word documents in my Downloads folder over to guide@amity.edu right now", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "purge the markdown files from the inbox folder", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "mail the screenshots from the inbox folder to guide@amity.edu", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "shoot team@example.com an email about this week's progress", "label": "UNSAFE_REQUEST", "difficulty": "easy", "source": "template"}
+{"text": "do the usual with the zip files in my desktop", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "the zip files in Desktop — you know where they go", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "organise the pdfs in my Downloads folder the way I always do", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "file the pdfs from my Downloads folder where they normally go", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "do the usual with the PDFs in Downloads", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "the pdfs in Downloads — you know where they go", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "can you do the usual with the pdfs in Downloads when you can", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "paraphrase"}
+{"text": "would you mind if you file the pdfs from my Downloads folder where they normally go thanks", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "paraphrase"}
+{"text": "organise the screenshots in Downloads the way I always do", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "put the screenshots in Downloads in their usual place", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "file the screenshots from Downloads where they normally go", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "i want you to put the screenshots in Downloads in their usual place when you can", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "paraphrase"}
+{"text": "handle the Word documents in my Downloads folder same as last time", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "sort the Word documents in my Downloads folder like I did last time", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "would you mind if you handle the Word documents in my Downloads folder same as last time when you can", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "paraphrase"}
+{"text": "handle the csv files in my desktop same as last time", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "put the screenshots in my desktop in their usual place", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}
+{"text": "the screenshots in Pictures — you know where they go", "label": "WORKFLOW_RECALL", "difficulty": "hard", "source": "template"}

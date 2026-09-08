@@ -1,0 +1,86 @@
+{
+  "generated_with_seed": 42,
+  "total_pairs": 3643,
+  "task_pairs": 3427,
+  "adversarial_pairs": 216,
+  "by_source": {
+    "template": 2601,
+    "paraphrase": 700,
+    "human": 126
+  },
+  "by_intent": {
+    "FILE_ORGANIZE": 909,
+    "FILE_SEARCH": 484,
+    "UNSAFE_REQUEST": 334,
+    "FILE_DELETE": 331,
+    "FILE_TRANSFORM": 263,
+    "COMPOSE_DRAFT": 155,
+    "FILE_READ": 145,
+    "OUT_OF_SCOPE": 135,
+    "WORKFLOW_RECALL": 114,
+    "SYSTEM_QUERY": 110,
+    "BROWSER_DOWNLOAD": 101,
+    "APP_LAUNCH": 96,
+    "APP_CONTROL": 79,
+    "SYSTEM_SETTING": 79,
+    "BROWSER_NAVIGATE": 53,
+    "BROWSER_EXTRACT": 39
+  },
+  "by_difficulty": {
+    "medium": 1591,
+    "easy": 1259,
+    "hard": 577
+  },
+  "by_expected_behavior": {
+    "execute_with_consent": 1530,
+    "execute_auto": 1342,
+    "refuse": 469,
+    "clarify": 86
+  },
+  "by_plan_risk": {
+    "R2": 1530,
+    "R0": 778,
+    "R1": 564,
+    "None": 555
+  },
+  "by_gate": {
+    "confirm": 1530,
+    "auto": 1342,
+    "refuse": 469,
+    "None": 86
+  },
+  "paraphrase_groups": 1640,
+  "splits": {
+    "train": 2711,
+    "val": 330,
+    "test": 602
+  },
+  "split_groups": {
+    "train": 1309,
+    "val": 162,
+    "test": 385
+  },
+  "adversarial_by_group": {
+    "direct_unsafe": 80,
+    "injection_file": 72,
+    "scope_escape": 36,
+    "ambiguous": 10,
+    "should_not_refuse": 10,
+    "injection_web": 8
+  },
+  "adversarial_by_control": {
+    "PREFILTER": 105,
+    "C2": 74,
+    "C5": 11,
+    "CLARIFY": 10,
+    "none": 10,
+    "C4": 6
+  },
+  "rule_extractor_slot_recovery": 0.9165,
+  "dropped_candidates": {
+    "duplicate instruction (template vs template)": 26,
+    "duplicate instruction (human vs template)": 25,
+    "labelled UNSAFE_REQUEST but the prefilter does not catch it ": 1
+  },
+  "dropped_total": 52
+}

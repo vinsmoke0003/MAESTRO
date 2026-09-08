@@ -1,0 +1,113 @@
+{
+  "planner": "rule-based (M0 baseline)",
+  "model": "rule-based",
+  "n": 383,
+  "PlanExactMatch": 72.94,
+  "ActionF1": 0.8179,
+  "VerbAccuracy": 96.37,
+  "SchemaValidity": 83.29,
+  "DagValidity": 100.0,
+  "RiskHintAgreement": 100.0,
+  "RefusalAccuracy": 73.77,
+  "RefusalAccuracy_n": 61,
+  "latency_p50_ms": 0.3,
+  "latency_p95_ms": 0.6,
+  "n_scored_against_gold": 303,
+  "by_difficulty": {
+    "easy": {
+      "n": 87,
+      "exact_match": 85.06,
+      "action_f1": 0.8506
+    },
+    "hard": {
+      "n": 46,
+      "exact_match": 71.74,
+      "action_f1": 0.8913
+    },
+    "medium": {
+      "n": 170,
+      "exact_match": 67.06,
+      "action_f1": 0.7814
+    }
+  },
+  "worst_verb_sequences": {
+    "fs.list_dir": 11
+  },
+  "failures": [
+    {
+      "id": "dp_tmpl_01849",
+      "instruction": "download https://www.python.org/downloads/ to Documents/Finance",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01875",
+      "instruction": "save https://huggingface.co/datasets into Documents/Semester",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01846",
+      "instruction": "save https://docs.python.org/3/library/pathlib.html into Documents/Fin",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01870",
+      "instruction": "download https://docs.python.org/3/library/pathlib.html to Documents/F",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00018",
+      "instruction": "would you mind if you download https://docs.python.org/3/library/pathl",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00641",
+      "instruction": "can you save https://docs.python.org/3/library/pathlib.html into Docum",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00465",
+      "instruction": "i need you to make me a note about my leave request right now",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00287",
+      "instruction": "hey maestro, compose a message to shashank@example.com regarding the a",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00390",
+      "instruction": "can you prepare an email for team@example.com about the project status",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01262",
+      "instruction": "I don't need the videos in Pictures any more, remove them",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01180",
+      "instruction": "I don't need the photos in Pictures any more, remove them",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01216",
+      "instruction": "clear the photos out of Pictures",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_tmpl_01282",
+      "instruction": "remove all photos from Pictures",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00014",
+      "instruction": "could you I don't need the photos in Pictures any more, remove them th",
+      "error": "wrong plan"
+    },
+    {
+      "id": "dp_para_00467",
+      "instruction": "hey maestro, remove all photos from Pictures when you can",
+      "error": "wrong plan"
+    }
+  ]
+}
