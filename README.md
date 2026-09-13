@@ -47,6 +47,11 @@ An LLM may generate a plan, but it never decides whether the plan is safe, wheth
 
 The repository currently contains both the research documentation and a working Major Project implementation.
 
+> **Where the code is.** The current implementation (v1.0) lives in [`Project/`](Project/) and is documented in
+> [`Project/README.md`](Project/README.md), which carries the evaluation results, the quick start and the honest limits.
+> `Major/` is the earlier v0.2 prototype that the status tables below describe; it is kept for the record and is not
+> the version to run or cite.
+
 ### Completed So Far
 
 | Area | Status |
@@ -84,6 +89,15 @@ The implementation contains approximately 2,719 Python lines including tests.
 ```text
 .
 ├── README.md
+├── Project/                      # v1.0 — current implementation, evaluation, dataset, training
+│   ├── README.md
+│   ├── Makefile
+│   ├── maestro/
+│   ├── data/
+│   ├── eval/
+│   ├── training/
+│   ├── models/
+│   └── tests/
 ├── docs/
 │   ├── 01-PRD.md
 │   ├── 02-ARCHITECTURE.md
@@ -95,7 +109,7 @@ The implementation contains approximately 2,719 Python lines including tests.
 │   ├── 08-TEAM-DELIVERABLES-RISKS.md
 │   ├── base-papers/
 │   └── MAESTRO-Progress-Presentation.pptx
-├── Major/
+├── Major/                        # v0.2 prototype (superseded by Project/)
 │   ├── README.md
 │   ├── MAJOR-PROJECT-REPORT.md
 │   ├── pyproject.toml
@@ -154,7 +168,7 @@ The safety engine is deterministic. This is intentional: safety decisions must b
 
 ## Major Implementation
 
-The working implementation lives in `Major/`.
+The current implementation (v1.0) lives in `Project/`; the module table below applies to both it and the earlier `Major/` prototype, with `Project/` adding `maestro/nlp/` (intent classifier), `maestro/agents/`, `eval/` (100-task and adversarial suites), `data/` (DeskPlan) and `training/` (LoRA preparation).
 
 ### Key Modules
 
@@ -176,19 +190,25 @@ The working implementation lives in `Major/`.
 
 ## Running The Major Project
 
-From the `Major/` directory:
+From the `Project/` directory:
 
 ```bash
-source .venv/bin/activate
-uv pip install -e .
-python -m pytest -q
+make install
+```
+
+```bash
+make test
 ```
 
 Run the demo:
 
 ```bash
-maestro demo
+make demo
 ```
+
+`make help` lists every target (dataset build, benchmark, evaluation matrix, report rendering). Full details are in [`Project/README.md`](Project/README.md).
+
+The earlier `Major/` prototype is run from its own directory with `uv pip install -e .` and `maestro demo`.
 
 Other useful commands:
 
@@ -287,7 +307,7 @@ These are the properties the report and evaluation should defend.
 
 ## Still To Build
 
-The next major work areas are:
+This table reflects the `Major/` v0.2 prototype. Several of these items (evaluation harness, 100-task benchmark, DeskPlan expansion, LoRA preparation) are delivered in `Project/` v1.0; see the status and limits sections of [`Project/README.md`](Project/README.md) for the current picture.
 
 | Area | Status |
 |---|---|
@@ -307,7 +327,7 @@ The next major work areas are:
 ## Recommended Next Steps
 
 1. Update the top-level README from Week 2 orientation to current project status.
-2. Keep `Major/README.md` as the developer-focused implementation guide.
+2. Keep `Project/README.md` as the developer-focused implementation guide.
 3. Keep the root README as the examiner/team-facing overview.
 4. Start the next implementation step with `search.*` verbs or the evaluation harness.
 5. Keep safety tests central whenever adding a new executor.

@@ -33,3 +33,7 @@ Project/eval/results/raw/
 Project/training/data/
 Project/.pytest_cache/
 Project/.ruff_cache/
+
+# Office lock/temp files
+.~*
+~$*
