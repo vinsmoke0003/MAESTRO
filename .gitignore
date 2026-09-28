@@ -37,3 +37,6 @@ Project/.ruff_cache/
 # Office lock/temp files
 .~*
 ~$*
+
+# Archify working folders (check receipts, screenshots)
+.archify/

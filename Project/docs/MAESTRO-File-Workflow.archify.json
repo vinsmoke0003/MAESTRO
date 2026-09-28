@@ -1,0 +1,639 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "MAESTRO v1.0 — How One Instruction Flows Through the Files",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/workflow-maestro-files-20260928-214122/maestro-file-workflow.html",
+    "repository": {
+      "url": "https://github.com/vinsmoke0003/MAESTRO.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "2658fba422ae9b6b8e3bdfc1256c0adac563f5e4"
+    }
+  },
+  "lanes": [
+    {
+      "id": "iface",
+      "label": "Entry · L0 memory"
+    },
+    {
+      "id": "nlp",
+      "label": "L5 · NLP"
+    },
+    {
+      "id": "plan",
+      "label": "L4 · Planner"
+    },
+    {
+      "id": "orch",
+      "label": "L2 Orchestrate · L3 Safety"
+    },
+    {
+      "id": "exec",
+      "label": "Consent · L1 Execute"
+    }
+  ],
+  "groups": [
+    {
+      "id": "understand",
+      "label": "Understand",
+      "lane": "nlp",
+      "fromCol": 1,
+      "toCol": 3,
+      "variant": "default"
+    },
+    {
+      "id": "planners",
+      "label": "Hybrid planning",
+      "lane": "plan",
+      "fromCol": 2,
+      "toCol": 4,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "cli",
+    "pipeline",
+    "classifier",
+    "entities",
+    "clarify",
+    "planner",
+    "orchestrator",
+    "scorer",
+    "consent",
+    "executors",
+    "verifier",
+    "reply"
+  ],
+  "nodes": [
+    {
+      "id": "cli",
+      "lane": "iface",
+      "col": 0,
+      "type": "frontend",
+      "label": "cli.py · ui.py",
+      "sublabel": "user's instruction in",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/cli.py",
+          "line": 92,
+          "end_line": 100,
+          "label": "cmd_ask → handle()"
+        },
+        {
+          "path": "Project/maestro/ui.py",
+          "line": 98,
+          "end_line": 149,
+          "label": "preview, then fingerprinted approve"
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "lane": "iface",
+      "col": 1,
+      "type": "backend",
+      "label": "pipeline.py",
+      "sublabel": "MaestroPipeline.handle()",
+      "tag": "only place that knows the order",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 219,
+          "end_line": 338,
+          "label": "handle()"
+        }
+      ]
+    },
+    {
+      "id": "reply",
+      "lane": "iface",
+      "col": 5,
+      "type": "frontend",
+      "label": "Turn → user",
+      "sublabel": "status + outcome message",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 581,
+          "end_line": 596,
+          "label": "_outcome_message"
+        }
+      ]
+    },
+    {
+      "id": "refused",
+      "lane": "nlp",
+      "col": 0,
+      "type": "security",
+      "label": "Refused",
+      "sublabel": "before any planning",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 274,
+          "end_line": 280,
+          "label": "confident refusal"
+        }
+      ]
+    },
+    {
+      "id": "classifier",
+      "lane": "nlp",
+      "col": 1,
+      "type": "backend",
+      "label": "nlp/classifier.py",
+      "sublabel": "prefilter + 16 intents",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/nlp/classifier.py",
+          "line": 191,
+          "label": "safety_prefilter"
+        },
+        {
+          "path": "Project/maestro/nlp/classifier.py",
+          "line": 382,
+          "end_line": 406,
+          "label": "SklearnIntentClassifier.predict"
+        }
+      ]
+    },
+    {
+      "id": "entities",
+      "lane": "nlp",
+      "col": 2,
+      "type": "backend",
+      "label": "nlp/entities.py",
+      "sublabel": "slots: paths, types, app",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/nlp/entities.py",
+          "line": 354,
+          "label": "EntityExtractor.slots"
+        }
+      ]
+    },
+    {
+      "id": "clarify",
+      "lane": "nlp",
+      "col": 3,
+      "type": "backend",
+      "label": "nlp/clarify.py",
+      "sublabel": "ask, never guess",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/nlp/clarify.py",
+          "line": 99,
+          "end_line": 172,
+          "label": "ClarificationManager.check"
+        }
+      ]
+    },
+    {
+      "id": "question",
+      "lane": "nlp",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Question",
+      "sublabel": "resume() applies answer",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 287,
+          "end_line": 293,
+          "label": "status clarified"
+        }
+      ]
+    },
+    {
+      "id": "llm",
+      "lane": "plan",
+      "col": 2,
+      "type": "cloud",
+      "label": "llm/router.py",
+      "sublabel": "local Ollama, cached",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/llm/router.py",
+          "line": 40,
+          "end_line": 60,
+          "label": "pick()"
+        }
+      ]
+    },
+    {
+      "id": "planner",
+      "lane": "plan",
+      "col": 3,
+      "type": "backend",
+      "label": "planner/planner.py",
+      "sublabel": "HybridPlanner → Plan IR",
+      "tag": "ir/model.py",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/planner/planner.py",
+          "line": 153,
+          "end_line": 189,
+          "label": "HybridPlanner.plan"
+        },
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 299,
+          "label": "planner.plan()"
+        }
+      ]
+    },
+    {
+      "id": "rulebased",
+      "lane": "plan",
+      "col": 4,
+      "type": "backend",
+      "label": "planner/rulebased.py",
+      "sublabel": "template floor",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/planner/rulebased.py",
+          "line": 330,
+          "label": "build_plan"
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "lane": "orch",
+      "col": 2,
+      "type": "database",
+      "label": "safety/audit.py",
+      "sublabel": "SQLite hash chain",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/safety/audit.py",
+          "line": 87,
+          "end_line": 108,
+          "label": "append"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 476,
+          "end_line": 478,
+          "label": "_log"
+        }
+      ]
+    },
+    {
+      "id": "orchestrator",
+      "lane": "orch",
+      "col": 3,
+      "type": "backend",
+      "label": "orchestrator.py",
+      "sublabel": "score · dry-run · gate · run",
+      "tag": "DAG frozen at consent",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 148,
+          "end_line": 231,
+          "label": "run()"
+        },
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 324,
+          "label": "orchestrator.run()"
+        }
+      ]
+    },
+    {
+      "id": "critic",
+      "lane": "exec",
+      "col": 3,
+      "type": "backend",
+      "label": "planner/critic.py",
+      "sublabel": "over-reach review",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/planner/critic.py",
+          "line": 87,
+          "label": "Critic.review"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 169,
+          "label": "advisory call"
+        }
+      ]
+    },
+    {
+      "id": "scorer",
+      "lane": "orch",
+      "col": 4,
+      "type": "security",
+      "label": "safety/scorer.py",
+      "sublabel": "R0–R3 · paths · taint",
+      "tag": "no LLM · BLOCKED stops here",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/safety/scorer.py",
+          "line": 214,
+          "end_line": 237,
+          "label": "score_plan"
+        },
+        {
+          "path": "Project/maestro/safety/paths.py",
+          "line": 139,
+          "label": "PathPolicy.check"
+        },
+        {
+          "path": "Project/maestro/safety/taint.py",
+          "line": 96,
+          "label": "taint apply"
+        }
+      ]
+    },
+    {
+      "id": "consent",
+      "lane": "exec",
+      "col": 4,
+      "type": "security",
+      "label": "safety/consent.py",
+      "sublabel": "R2 click · R3 typed",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/safety/consent.py",
+          "line": 72,
+          "end_line": 98,
+          "label": "ConsentGate.decide"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 219,
+          "label": "gate.decide"
+        }
+      ],
+      "tag": "denied → nothing runs"
+    },
+    {
+      "id": "verifier",
+      "lane": "orch",
+      "col": 5,
+      "type": "backend",
+      "label": "agents/verifier.py",
+      "sublabel": "fail → roll back",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/agents/verifier.py",
+          "line": 147,
+          "end_line": 160,
+          "label": "Verifier.run"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 346,
+          "end_line": 353,
+          "label": "postconditions"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 394,
+          "end_line": 407,
+          "label": "_rollback"
+        }
+      ]
+    },
+    {
+      "id": "executors",
+      "lane": "exec",
+      "col": 5,
+      "type": "backend",
+      "label": "executor/*.py",
+      "sublabel": "28 verbs · fs, browser…",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/executor/__init__.py",
+          "line": 8,
+          "end_line": 14,
+          "label": "verb modules"
+        },
+        {
+          "path": "Project/maestro/executor/base.py",
+          "line": 116,
+          "end_line": 136,
+          "label": "Executor protocol"
+        },
+        {
+          "path": "Project/maestro/orchestrator.py",
+          "line": 333,
+          "label": "ex.execute"
+        }
+      ]
+    },
+    {
+      "id": "episodes",
+      "lane": "iface",
+      "col": 4,
+      "type": "database",
+      "label": "memory/episodes.py",
+      "sublabel": "episodes + preferences",
+      "width": 146,
+      "sources": [
+        {
+          "path": "Project/maestro/pipeline.py",
+          "line": 532,
+          "end_line": 562,
+          "label": "_record"
+        },
+        {
+          "path": "Project/maestro/memory/episodes.py",
+          "line": 122,
+          "label": "EpisodeStore.record"
+        },
+        {
+          "path": "Project/maestro/memory/preferences.py",
+          "line": 103,
+          "label": "learn_from_plan"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-cli-pipe",
+      "from": "cli",
+      "to": "pipeline",
+      "label": "handle()",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-pipe-clf",
+      "from": "pipeline",
+      "to": "classifier",
+      "label": "predict"
+    },
+    {
+      "id": "e-clf-refuse",
+      "from": "classifier",
+      "to": "refused",
+      "label": "UNSAFE",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-clf-ent",
+      "from": "classifier",
+      "to": "entities",
+      "label": "intent"
+    },
+    {
+      "id": "e-ent-clar",
+      "from": "entities",
+      "to": "clarify",
+      "label": "slots"
+    },
+    {
+      "id": "e-clar-q",
+      "from": "clarify",
+      "to": "question",
+      "label": "unsure",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-clar-plan",
+      "from": "clarify",
+      "to": "planner",
+      "label": "clear",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-plan-llm",
+      "from": "planner",
+      "to": "llm",
+      "label": "LLM first",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-plan-rule",
+      "from": "planner",
+      "to": "rulebased",
+      "label": "fallback",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-plan-orch",
+      "from": "planner",
+      "to": "orchestrator",
+      "label": "Plan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-orch-critic",
+      "from": "orchestrator",
+      "to": "critic",
+      "label": "review",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-orch-audit",
+      "from": "orchestrator",
+      "to": "audit",
+      "label": "log",
+      "variant": "dashed",
+      "role": "async"
+    },
+    {
+      "id": "e-orch-score",
+      "from": "orchestrator",
+      "to": "scorer",
+      "label": "score_plan",
+      "variant": "security"
+    },
+    {
+      "id": "e-score-consent",
+      "from": "scorer",
+      "to": "consent",
+      "label": "gate",
+      "variant": "security"
+    },
+    {
+      "id": "e-consent-exec",
+      "from": "consent",
+      "to": "executors",
+      "label": "approved",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-exec-ver",
+      "from": "executors",
+      "to": "verifier",
+      "label": "result"
+    },
+    {
+      "id": "e-ver-reply",
+      "from": "verifier",
+      "to": "reply",
+      "label": "RunReport → Turn",
+      "variant": "emphasis",
+      "role": "return"
+    },
+    {
+      "id": "e-pipe-ep",
+      "from": "pipeline",
+      "to": "episodes",
+      "label": "_record + _learn",
+      "variant": "dashed",
+      "role": "async"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Safety rules the flow enforces",
+      "items": [
+        "No LLM is called anywhere in maestro/safety/",
+        "registry.py is closed: 28 verbs, 2 hard-blocked with no executor",
+        "Dry run happens before consent; the plan cannot grow after it",
+        "ok=True is not success: verifier.py checks the real filesystem"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Files beside the main path",
+      "items": [
+        "ir/model.py: the typed Plan / Action contract every layer passes",
+        "agents/summarizer.py: tool-less reader for untrusted file text",
+        "safety/budget.py: static and per-step limits inside run()",
+        "config.py: workspace, model and bulk threshold from env vars"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Same path for every caller",
+      "items": [
+        "cli.py, ui.py and eval/harness.py all call pipeline.handle()",
+        "So the benchmark measures the code a user actually runs"
+      ]
+    }
+  ]
+}
