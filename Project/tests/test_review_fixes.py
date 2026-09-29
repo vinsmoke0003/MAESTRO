@@ -203,3 +203,19 @@ def test_undo_report_ok_is_false_on_partial(tmp_path):
     r2 = UndoReport(plan_id="p", reversed=1, verified_files=2)
     assert r2.ok is True
     assert json.dumps(r.render()) # renders without error
+
+
+def test_a_plan_blocked_before_the_dry_run_is_refused_not_crashed(tmp_path):
+    """A denylisted path is blocked by the first safety verdict, before any
+    dry run, so the report has no manifests. The pipeline used to render a
+    preview anyway and crash with a zip() length error instead of refusing."""
+    from maestro.pipeline import MaestroPipeline
+
+    p = MaestroPipeline()
+    try:
+        turn = p.handle("move the pdfs from /etc to Documents")
+    finally:
+        p.close()
+    assert turn.status == "blocked"
+    assert turn.message.startswith("Refused")
+    assert turn.preview == ""

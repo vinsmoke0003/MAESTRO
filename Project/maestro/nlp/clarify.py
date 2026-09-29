@@ -73,6 +73,8 @@ SLOT_QUESTIONS: dict[str, str] = {
     "setting_key": "Which setting should I change?",
     "setting_value": "What value should I set it to?",
     "subject": "What should the draft be about?",
+    "recipients": "Who should the Gmail draft be addressed to? Say or type the email address.",
+    "query": "Which file in your Google Drive? Tell me part of its name.",
 }
 
 

@@ -32,6 +32,7 @@ from maestro.nlp import (
     IntentPrediction,
     Slots,
     load_classifier,
+    services,
 )
 from maestro.nlp.clarify import Clarification
 from maestro.orchestrator import Orchestrator, RunReport, render_preview
@@ -251,9 +252,17 @@ class MaestroPipeline:
             # is never overridden this way.
             pred = IntentPrediction(intent_override, 1.0, {intent_override: 1.0},
                                     "user")
+        # Gmail / Drive requests are routed by rule (nlp/services.py). This runs
+        # after the classifier, so its deterministic unsafe-request prefilter
+        # has already had its say: a confident refusal is never re-routed.
+        route = None if pred.is_confident_refusal else services.route(instruction)
+        if route and intent_override is None:
+            pred = IntentPrediction(route.intent, 0.97, {route.intent: 0.97}, "service")
         turn.intent = pred.intent
         turn.intent_confidence = pred.confidence
         slots = self.extractor.slots(instruction, pred.intent)
+        if route and route.intent == pred.intent:
+            route.apply(slots)
         for key, value in (slot_overrides or {}).items():
             if hasattr(slots, key):
                 setattr(slots, key, value)
@@ -325,8 +334,14 @@ class MaestroPipeline:
                                        slots=slots, preview_only=preview_only)
         turn.report = report
         turn.status = report.status
+        # A plan blocked by the first safety verdict never reaches the dry run,
+        # so it has no manifests. Rendering a preview for it crashed the whole
+        # turn ("move the pdfs from /etc to Documents" raised instead of being
+        # refused); there is nothing to preview, only the refusal to report.
+        has_preview = report.verdict is not None and \
+            len(report.manifests) == len(report.verdict.actions)
         turn.preview = render_preview(plan, report.verdict, report.manifests,
-                                      report.critic) if report.verdict else ""
+                                      report.critic) if has_preview else ""
         turn.message = _outcome_message(report)
 
         # ---- L0: remember --------------------------------------------------
@@ -462,6 +477,14 @@ class MaestroPipeline:
             return found.setting_key or "volume", None
         if slot == "subject":
             return answer, None
+        if slot == "recipients":
+            import re
+
+            found = re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", answer.replace(" at ", "@")
+                               .replace(" dot ", "."))
+            return (found or None), (None if found else "I need an email address")
+        if slot == "query":
+            return answer.strip(" .") or None, (None if answer.strip() else "which file?")
         return (answer or None), (None if answer else "I did not catch that")
 
     def _cancelled(self, pending: Turn, message: str) -> Turn:

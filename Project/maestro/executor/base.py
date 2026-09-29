@@ -94,6 +94,9 @@ class EffectManifest:
     collisions: list[str] = field(default_factory=list)
     unknowns: list[str] = field(default_factory=list)
     external: list[str] = field(default_factory=list)  # network destinations
+    # Human-readable lines listing exactly what will be created — e.g. each
+    # calendar event — so consent is to the items, not to a count.
+    items: list[str] = field(default_factory=list)
 
     @property
     def predictable(self) -> bool:

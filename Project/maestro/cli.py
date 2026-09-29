@@ -2,6 +2,8 @@
 system is developed and evaluated through.
 
     maestro ask "move the pdfs from Downloads to Documents/Invoices"
+    maestro voice                    talk to MAESTRO: listen, act, answer aloud
+    maestro google connect           sign in to Gmail + Drive (status, disconnect)
     maestro demo                     scripted end-to-end walkthrough
     maestro summarize FILE           the injection demo (untrusted content)
     maestro plan "..."               plan + preview only, execute nothing
@@ -129,6 +131,10 @@ def cmd_ask(args: argparse.Namespace) -> int:
         print(f"x {turn.message}")
     elif turn.status == "completed":
         print(f"v {turn.message}")
+        from maestro.results import present
+
+        for line in present(turn).lines:
+            print(line)
     else:
         print(f"! {turn.message}")
 
@@ -143,6 +149,232 @@ def cmd_ask(args: argparse.Namespace) -> int:
 
     pipe.close()
     return 0 if turn.status in ("completed", "clarified", "refused", "cancelled") else 1
+
+
+def cmd_voice(args: argparse.Namespace) -> int:
+    """Spoken conversation with the same pipeline `ask` uses.
+
+    Everything runs locally: Whisper for speech recognition, the OS voice for
+    replies. `--text` swaps the microphone for the keyboard, which is also what
+    to use on a machine without the voice extra installed.
+    """
+    from maestro.voice import (
+        KeyboardEars,
+        MicEars,
+        SilentMouth,
+        SystemMouth,
+        VoiceAgent,
+        VoiceUnavailable,
+        WhisperTranscriber,
+    )
+
+    print(BANNER)
+    if args.list_devices or args.mic_test:
+        return _mic_diagnostics(args)
+
+    mouth = SilentMouth() if args.quiet else SystemMouth(rate=args.rate)
+    if args.text:
+        ears = KeyboardEars()
+    else:
+        live = _LiveLine()
+        ears = MicEars(WhisperTranscriber(args.stt_model), device=args.device,
+                       on_state=live.state, on_level=live.level,
+                       on_partial=None if args.no_captions else live.caption,
+                       push_to_talk=args.push_to_talk)
+        try:
+            mic = ears.check()
+            print(f"  microphone: {mic}")
+            print(f"  loading speech model '{ears.transcriber.model_name}' "
+                  "(downloaded once on first use)...", flush=True)
+            ears.warm_up()
+        except VoiceUnavailable as e:
+            print(f"voice input is not available: {e}")
+            print("Install it with:  pip install -e \".[voice]\"   "
+                  "or run  maestro voice --text  to type instead.")
+            return 2
+        except Exception as e:  # model download / load failures
+            print(f"could not load the speech model: {type(e).__name__}: {e}")
+            return 2
+
+    # Push-to-talk already says "I am talking to you": pressing Enter is the
+    # wake signal, so demanding the name as well would ignore real commands.
+    wake = None if (args.no_wake or (args.push_to_talk and not args.text)) else args.wake
+    agent = VoiceAgent(ears, mouth, pipeline_factory=lambda gate: MaestroPipeline(gate=gate),
+                       wake_word=wake, min_confidence=args.min_confidence)
+    print(f"[{agent.pipe.describe()}]")
+    if wake:
+        print(f"  wake word: start each command with '{wake.capitalize()}', "
+              f"e.g. \"{wake.capitalize()}, how much disk space is left?\"")
+    if args.push_to_talk and not args.text:
+        print("  push-to-talk: press Enter, speak, press Enter again")
+    print("  say 'goodbye' (or press Ctrl-C at any time) to stop")
+    print()
+    try:
+        return agent.run()
+    except VoiceUnavailable as e:
+        print()
+        print(f"voice input stopped: {e}")
+        print("To check the microphone:  maestro voice --mic-test")
+        return 2
+
+
+class _LiveLine:
+    """One self-rewriting terminal line: a level meter while waiting, your
+    words as you speak them, cleared when the final transcript is printed."""
+
+    WIDTH = 78
+
+    def __init__(self) -> None:
+        self.speaking = False
+
+    def _write(self, text: str) -> None:
+        sys.stdout.write("\r" + text[: self.WIDTH].ljust(self.WIDTH))
+        sys.stdout.flush()
+
+    def state(self, s: str) -> None:
+        if s == "listening":
+            self.speaking = False
+            print("  [listening - speak now]", flush=True)
+        elif s == "hearing":
+            self.speaking = True
+            self._write("  hearing you...")
+        elif s == "transcribing":
+            # A caption still being computed must not land after this point
+            # and glue itself to the next line of output.
+            self.speaking = False
+            self._write("")
+            sys.stdout.write("\r")
+            sys.stdout.flush()
+
+    def level(self, level: float, threshold: float, speaking: bool) -> None:
+        if speaking:
+            return                      # the caption owns the line while you talk
+        bars = min(20, int(20 * level / max(threshold * 1.5, 1e-6)))
+        mark = "|" if bars < 20 else ">"
+        self._write(f"  mic [{'#' * bars}{'.' * (20 - bars)}]{mark} "
+                    f"level {level:.4f}  (speech at {threshold:.4f})")
+
+    def caption(self, text: str) -> None:
+        if self.speaking:
+            self._write(f"  ... {text}")
+
+
+def _chain(first, rest):
+    yield first
+    yield from rest
+
+
+def _mic_diagnostics(args: argparse.Namespace) -> int:
+    """`maestro voice --list-devices` / `--mic-test`: is sound reaching us?"""
+    import time
+
+    from maestro.voice import MicEars, VoiceUnavailable
+
+    ears = MicEars(device=args.device)
+    try:
+        sd = ears._sd()
+        name = ears.check()
+    except VoiceUnavailable as e:
+        print(f"voice input is not available: {e}")
+        return 2
+
+    print("  input devices (use --device N to pick one):")
+    default_in = sd.default.device[0] if sd.default.device else None
+    for i, d in enumerate(sd.query_devices()):
+        if d["max_input_channels"] > 0:
+            star = "*" if i == default_in else " "
+            print(f"   {star} {i:2d}  {d['name']}")
+    if args.list_devices:
+        return 0
+
+    seconds = 12
+    print()
+    print(f"  mic test on '{name}': talk normally for {seconds} seconds...")
+    print("  (the bar should jump when you speak; 'SPEECH' means MAESTRO would listen)")
+    ep = ears.endpointer
+    peak = 0.0
+    spoke = False
+    t0 = time.monotonic()
+    n = 0
+    stream = ears.frames()
+    try:
+        first = next(stream)
+    except VoiceUnavailable as e:
+        print(f"\n  RESULT: {e}")
+        return 1
+    for frame in _chain(first, stream):
+        if time.monotonic() - t0 > seconds:
+            break
+        if frame is None:
+            continue
+        n += 1
+        ep.feed(frame)
+        peak = max(peak, ep.level)
+        spoke = spoke or ep.in_speech
+        if n % 3 == 0:
+            bars = min(30, int(30 * ep.level / max(ep.start_level * 1.5, 1e-6)))
+            tag = "SPEECH" if ep.in_speech else ("calibrating" if not ep.calibrated else "")
+            sys.stdout.write(f"\r  [{'#' * bars}{'.' * (30 - bars)}] {ep.level:.4f} {tag:12s}")
+            sys.stdout.flush()
+    print()
+    print()
+    print(f"  loudest level {peak:.4f} · room noise {ep.noise_floor:.4f} · "
+          f"speech starts at {ep.start_level:.4f}")
+    if peak < 1e-4:
+        print("  RESULT: the microphone is sending pure silence.")
+        print("  On macOS this almost always means microphone access is blocked for the")
+        print("  app running this terminal. Open System Settings > Privacy & Security >")
+        print("  Microphone, switch it ON for Claude (or Terminal), quit and reopen that")
+        print("  app, then run this test again. If it is already on, try --device N.")
+        return 1
+    if not spoke:
+        print("  RESULT: sound arrives, but never loud enough to count as speech.")
+        print("  Move closer to the microphone, raise its input volume (System Settings >")
+        print("  Sound > Input), or pick another device with --device N.")
+        return 1
+    print("  RESULT: microphone OK - MAESTRO can hear you.")
+    return 0
+
+
+def cmd_google(args: argparse.Namespace) -> int:
+    """Connect, inspect or disconnect the Google account (Gmail + Drive)."""
+    from maestro.google import auth
+
+    if args.action == "connect":
+        print("Connecting MAESTRO to Google. Permissions requested:")
+        print("  - Gmail: read your mail, and create DRAFTS (MAESTRO never sends)")
+        print("  - Drive: read your files, and upload files you ask it to")
+        print("Your password goes only to Google's own sign-in page.\n")
+        try:
+            auth.connect(open_browser=not args.no_browser)
+        except auth.GoogleNotConnected as e:
+            print(f"not connected: {e}")
+            return 2
+        except Exception as e:  # the browser flow can fail in many small ways
+            print(f"sign-in did not complete: {type(e).__name__}: {e}")
+            return 2
+        print(f"\nconnected. Token stored at {auth.token_path()} (only you can read it).")
+        print('Try:  maestro ask "check my inbox"')
+        return 0
+
+    if args.action == "disconnect":
+        if auth.disconnect():
+            print("disconnected: the token was revoked at Google and deleted here.")
+        else:
+            print("MAESTRO was not connected to Google.")
+        return 0
+
+    st = auth.status()
+    print(f"  OAuth client file : {'found' if st['client_secret'] else 'MISSING'} "
+          f"({auth.client_secret_path()})")
+    print(f"  connected         : {'yes' if st['connected'] else 'no'}")
+    for sc in st.get("scopes", []):
+        print(f"    scope {sc.rsplit('/', 1)[-1]}")
+    if not st["client_secret"]:
+        print("\nSee Project/docs/GOOGLE-SETUP.md to create the OAuth client (free).")
+    elif not st["connected"]:
+        print("\nRun:  maestro google connect")
+    return 0
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
@@ -560,6 +792,44 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             return True, "chromadb absent — the hashing exemplar store is used (works)"
     probe("memory (exemplar retrieval)", _memory)
 
+    # --- voice: a microphone, a local speech model, and an OS voice ------------
+    def _voice_in():
+        from maestro.voice import MicEars, VoiceUnavailable
+
+        try:
+            importlib.import_module("faster_whisper")
+        except ImportError:
+            return False, "faster-whisper missing — pip install -e \".[voice]\" (--text works)"
+        try:
+            mic = MicEars().check()
+        except VoiceUnavailable as e:
+            return False, str(e)
+        return True, f"microphone '{mic}' + local Whisper (model fetched on first use)"
+    probe("voice input (maestro voice)", _voice_in)
+
+    def _voice_out():
+        from maestro.executor.platform import backend
+
+        if backend("speech").available():
+            return True, "system text-to-speech found"
+        return False, "no system voice; replies are printed only"
+    probe("voice output", _voice_out)
+
+    def _google():
+        from maestro.google import auth
+
+        try:
+            importlib.import_module("googleapiclient")
+        except ImportError:
+            return False, "google libraries missing — pip install -e \".[google]\""
+        st = auth.status()
+        if not st["client_secret"]:
+            return False, "no OAuth client file — see docs/GOOGLE-SETUP.md"
+        if not st["connected"]:
+            return False, "not signed in — run: maestro google connect"
+        return True, f"signed in ({len(st['scopes'])} scopes)"
+    probe("google (gmail + drive)", _google)
+
     # --- print ----------------------------------------------------------------
     width = max(len(f) for _, f, _ in rows)
     for status, feature, detail in rows:
@@ -603,6 +873,37 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("-v", "--verbose", action="store_true")
     ablations(a)
     a.set_defaults(func=cmd_ask)
+
+    gg = sub.add_parser("google", help="connect Gmail + Google Drive (connect/status/disconnect)")
+    gg.add_argument("action", choices=["connect", "status", "disconnect"], nargs="?",
+                    default="status")
+    gg.add_argument("--no-browser", action="store_true",
+                    help="print the sign-in link instead of opening a browser")
+    gg.set_defaults(func=cmd_google)
+
+    vo = sub.add_parser("voice", help="talk to MAESTRO: listen, act, answer aloud")
+    vo.add_argument("--text", action="store_true",
+                    help="type instead of speaking (no microphone needed)")
+    vo.add_argument("--quiet", action="store_true", help="print replies, do not speak")
+    vo.add_argument("--wake", metavar="WORD", default="maestro",
+                    help="only act on commands that start with this word (default: maestro)")
+    vo.add_argument("--no-wake", action="store_true",
+                    help="act on everything heard, without a wake word")
+    vo.add_argument("--stt-model", default=None,
+                    help="Whisper model: tiny.en, base.en (default), small.en")
+    vo.add_argument("--rate", type=int, default=None, help="speaking rate, words/minute")
+    vo.add_argument("--min-confidence", type=float, default=0.45,
+                    help="ask again below this recognition confidence (0-1)")
+    vo.add_argument("--device", type=int, default=None,
+                    help="microphone device number (see --list-devices)")
+    vo.add_argument("--list-devices", action="store_true", help="list microphones and exit")
+    vo.add_argument("--mic-test", action="store_true",
+                    help="show live microphone levels for 12 s and diagnose problems")
+    vo.add_argument("--push-to-talk", action="store_true",
+                    help="press Enter to start and stop each command (for noisy rooms)")
+    vo.add_argument("--no-captions", action="store_true",
+                    help="do not show words live while you speak")
+    vo.set_defaults(func=cmd_voice)
 
     pl = sub.add_parser("plan", help="plan and preview only — execute nothing")
     pl.add_argument("instruction", nargs="+")

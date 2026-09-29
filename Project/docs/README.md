@@ -51,6 +51,7 @@ discovered by the examiner.
 
 | Spec says | This does | Why |
 |---|---|---|
+| 06 §2: `affected_count > BULK_N` → R2 for every action | only for verbs that change state (base risk above R0) | Reading is not consequential. Counting or listing 27 PDFs in Downloads asked "may I look?", which is the false-confirmation habituation 06 §4 warns about. Moving, copying or trashing more than `BULK_N` files is still R2. Verified after the change: B3 keeps UER 0%, FCR 0%, IRR 100%, HBR 100%, RSA 100%; no DeskPlan risk label changed. Pinned by `test_safety.py::test_bulk_never_escalates_a_pure_read`. |
 | 06 §2: any path outside the allowlist → R2 | `sys.info`'s `path` is not a path argument at all | It selects a *volume* for `disk_usage`, not a file. Escalating "how much disk space is left?" to a consent prompt is the false-confirmation habituation failure 06 §4 warns about. |
 | 07 §3: 40 adversarial cases | 50 | The 40 attacks, plus 10 `should_not_refuse` controls. Without them a system that refuses everything scores 100% IRR. |
 | 05 §2: 1,400 LLM-generated, human-verified pairs | 0 shipped; tooling provided | Generating them needs a model and a human reviewer. `data/generate_llm_pairs.py` and `data/verify_candidates.py` do both halves, but this build does not fabricate rows and label them `llm_generated`. |

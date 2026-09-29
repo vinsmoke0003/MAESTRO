@@ -42,6 +42,9 @@ DEFAULT_ALLOW = [
 
 # Directories no plan may touch. Union of macOS + Windows + POSIX locations.
 DEFAULT_DENY_DIRS = [
+    # MAESTRO's own state: the audit chain, episodes and the Google token.
+    # No plan may read, move or upload these.
+    "~/.maestro",
     # cross-platform user secrets
     "~/.ssh",
     "~/.aws",
@@ -92,6 +95,7 @@ DEFAULT_DENY_PATTERNS = [
     "sam",
     "ntuser.dat",
     "*.sqlite-credentials",
+    "client_secret*.json",
 ]
 
 

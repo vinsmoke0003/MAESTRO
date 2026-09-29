@@ -53,6 +53,24 @@ INTENTS: list[str] = [
     UNSAFE_REQUEST,
 ]
 
+# Google service intents. Deliberately NOT in INTENTS: the trained classifier
+# and the DeskPlan dataset keep their 16 classes, so no reported number moves.
+# These are reached only through the deterministic router in nlp/services.py,
+# which runs after the safety prefilter and only when Gmail or Drive is named.
+GMAIL_SEARCH = "GMAIL_SEARCH"
+GMAIL_READ = "GMAIL_READ"
+GMAIL_DRAFT = "GMAIL_DRAFT"
+GMAIL_TO_CALENDAR = "GMAIL_TO_CALENDAR"   # reminders for tests/tickets found in mail
+DRIVE_SEARCH = "DRIVE_SEARCH"
+DRIVE_DOWNLOAD = "DRIVE_DOWNLOAD"
+DRIVE_UPLOAD = "DRIVE_UPLOAD"
+DRIVE_SHARE = "DRIVE_SHARE"      # planned so that the scorer can refuse it
+DRIVE_DELETE = "DRIVE_DELETE"
+
+SERVICE_INTENTS: list[str] = [GMAIL_SEARCH, GMAIL_READ, GMAIL_DRAFT, GMAIL_TO_CALENDAR,
+                              DRIVE_SEARCH,
+                              DRIVE_DOWNLOAD, DRIVE_UPLOAD, DRIVE_SHARE, DRIVE_DELETE]
+
 # The two classes whose F1 is reported in bold (docs/05 §1).
 REFUSAL_INTENTS = frozenset({OUT_OF_SCOPE, UNSAFE_REQUEST})
 
@@ -75,6 +93,15 @@ REQUIRED_SLOTS: dict[str, tuple[str, ...]] = {
     WORKFLOW_RECALL: (),
     OUT_OF_SCOPE: (),
     UNSAFE_REQUEST: (),
+    GMAIL_SEARCH: (),
+    GMAIL_READ: (),
+    GMAIL_DRAFT: ("recipients",),
+    GMAIL_TO_CALENDAR: (),
+    DRIVE_SEARCH: (),
+    DRIVE_DOWNLOAD: ("query",),
+    DRIVE_UPLOAD: ("source",),
+    DRIVE_SHARE: (),
+    DRIVE_DELETE: (),
 }
 
 # Which verbs an intent is allowed to reach. Used by the rule planner and by
@@ -99,6 +126,16 @@ INTENT_VERBS: dict[str, tuple[str, ...]] = {
     WORKFLOW_RECALL: ("fs.glob", "fs.mkdir", "fs.move_batch", "fs.copy"),
     OUT_OF_SCOPE: (),
     UNSAFE_REQUEST: (),
+    GMAIL_SEARCH: ("gmail.search",),
+    GMAIL_READ: ("gmail.search", "gmail.read"),
+    GMAIL_DRAFT: ("gmail.draft",),
+    GMAIL_TO_CALENDAR: ("gmail.search", "gmail.read", "mail.find_events",
+                        "calendar.add_events"),
+    DRIVE_SEARCH: ("drive.search",),
+    DRIVE_DOWNLOAD: ("drive.search", "drive.download"),
+    DRIVE_UPLOAD: ("fs.glob", "drive.upload"),
+    DRIVE_SHARE: ("drive.search", "drive.share"),
+    DRIVE_DELETE: ("drive.search", "drive.delete"),
 }
 
 # Expected behaviour per intent — the dataset's `expected_behavior` field

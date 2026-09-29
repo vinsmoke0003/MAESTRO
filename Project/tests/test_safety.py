@@ -160,6 +160,15 @@ def test_bulk_operation_escalates(policy, tmp_path):
     assert any("500 files" in r for r in high.reasons)
 
 
+def test_bulk_never_escalates_a_pure_read(policy, tmp_path):
+    """Looking at 500 files is not consequential; only changing them is.
+    Prompting for a read would be a false confirmation (docs/06 §4)."""
+    action = act("a1", "fs.glob", {"root": str(tmp_path), "pattern": "*.pdf"})
+    v = score_action(action, policy, estimated_files=500)
+    assert v.risk is Risk.R0
+    assert "R_bulk" not in v.rules_fired
+
+
 def test_irreversible_without_undo_is_r3(policy):
     v = score_action(act("a1", "browser.click",
                          {"url": "https://example.com", "selector": "#go"}), policy)

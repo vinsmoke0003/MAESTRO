@@ -29,6 +29,8 @@ UNTRUSTED_PRODUCERS: frozenset[str] = frozenset(
         "fs.read_text",
         "browser.extract",
         "search.by_content",
+        "gmail.read",          # an email body is the textbook injection carrier
+        "mail.find_events",    # dates and titles written by whoever sent the mail
     }
 )
 
@@ -46,6 +48,14 @@ DERIVED_PRODUCERS: frozenset[str] = frozenset(
         "fs.move_batch",
         "search.by_name",
         "sys.info",
+        # Lists of message/file ids that MAESTRO's own query produced. The
+        # subjects and names inside are attacker-written, exactly like file
+        # names from fs.glob, but the ids only ever select what to read or
+        # download; they are never spliced into an instruction.
+        "gmail.search",
+        "drive.search",
+        "drive.download",
+        "drive.upload",
     }
 )
 

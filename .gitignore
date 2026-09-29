@@ -40,3 +40,7 @@ Project/.ruff_cache/
 
 # Archify working folders (check receipts, screenshots)
 .archify/
+
+# Google OAuth secrets (MAESTRO keeps them in ~/.maestro/google, never here)
+client_secret*.json
+token.json

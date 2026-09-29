@@ -180,6 +180,7 @@ class Slots:
     days: int | None = None
     recursive: bool = False
     group_by: str | None = None  # "type" -> organise into per-extension subfolders
+    query: str | None = None     # Gmail / Drive search text (nlp/services.py)
     entities: list[Entity] = field(default_factory=list)
     unresolved: list[str] = field(default_factory=list)
 

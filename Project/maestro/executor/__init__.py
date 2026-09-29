@@ -10,6 +10,7 @@ from maestro.executor import app as _app  # noqa: F401,E402
 from maestro.executor import browser as _browser  # noqa: F401,E402
 from maestro.executor import draft as _draft  # noqa: F401,E402
 from maestro.executor import fs as _fs  # noqa: F401,E402
+from maestro.executor import google as _google  # noqa: F401,E402
 from maestro.executor import search as _search  # noqa: F401,E402
 from maestro.executor import system as _system  # noqa: F401,E402
 from maestro.executor.base import (

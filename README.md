@@ -207,7 +207,7 @@ The scorer in [`Project/maestro/safety/scorer.py`](Project/maestro/safety/scorer
 | path denylist | any path argument resolves under a denied location | blocked |
 | outside workspace | path is outside the allowlist | raise to R2 |
 | irreversible | not reversible and no undo declared | raise to R3 |
-| bulk | more than 25 files estimated | raise to R2 |
+| bulk | more than 25 files estimated, for a verb that changes state (reads never escalate) | raise to R2 |
 | network write | verb writes to the network | raise to R2 |
 | taint | untrusted content reaches a sensitive argument | raise to R2 |
 

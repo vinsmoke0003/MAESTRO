@@ -54,7 +54,7 @@ class ConsentRequest:
 @dataclass
 class Approval:
     approved: bool
-    method: str = "click"  # click | typed | auto | remembered | denied
+    method: str = "click"  # click | voice | typed | auto | remembered | denied
     remember: bool = False
     note: str = ""
 

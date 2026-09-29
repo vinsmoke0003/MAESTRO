@@ -568,6 +568,8 @@ def render_preview(plan: Plan, verdict: PlanVerdict, manifests: list[EffectManif
             lines.append(f"      ! collision: {c}")
         for x in m.external:
             lines.append(f"      > network: {x}")
+        for it in m.items:
+            lines.append(f"      • {it}")
         for u in m.unknowns:
             lines.append(f"      ? {u}")
         if av.risk >= Risk.R2 and av.reasons:

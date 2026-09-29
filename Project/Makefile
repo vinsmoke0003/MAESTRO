@@ -16,7 +16,7 @@ PYTHON := $(BIN)/python
 
 .DEFAULT_GOAL := help
 .PHONY: help venv install dataset benchmark train-intent test lint check eval \
-        report demo doctor clean all reproduce prepare-lora
+        report demo voice install-voice doctor clean all reproduce prepare-lora
 
 help:  ## show this help
 	@echo "MAESTRO — make targets"
@@ -104,6 +104,12 @@ planner-eval:  ## evaluate the planner against the DeskPlan test split
 
 demo:  ## the scripted end-to-end walkthrough
 	$(PYTHON) -m maestro.cli demo
+
+install-voice:  ## add microphone + local Whisper for `maestro voice`
+	$(PYTHON) -m pip install -e ".[voice]"
+
+voice:  ## talk to MAESTRO: listen, act, answer aloud (all local, free)
+	$(PYTHON) -m maestro.cli voice
 
 doctor:  ## what is installed, what is missing
 	$(PYTHON) -m maestro.cli doctor

@@ -125,6 +125,88 @@ ollama serve && ollama pull qwen2.5:7b-instruct-q4_K_M
 It is picked up automatically. `MAESTRO_MODEL` switches models; see
 [`.env.example`](.env.example).
 
+### Talk to it: `maestro voice`
+
+```bash
+make install-voice
+```
+
+```bash
+maestro voice
+```
+
+MAESTRO greets you, listens, and carries out what you say, then answers aloud.
+Start each command with its name — *"Maestro, how much disk space is left?"* —
+and say *goodbye* to stop. It is the same `MaestroPipeline.handle()` as `ask`, so
+every refusal, clarifying question and consent gate is exactly the typed one —
+voice is a new way in and out, not a new capability.
+
+Everything is local and free: speech recognition is
+[faster-whisper](https://github.com/SYSTRAN/faster-whisper) on the CPU (the
+model is downloaded once), replies use the operating system's own voice (`say`
+on macOS, SAPI on Windows, `espeak` on Linux), and planning is the template
+planner or local Ollama. No audio leaves the machine.
+
+| Flag | Effect |
+|---|---|
+| `--wake WORD` | change the wake word (default `maestro`; "hey maestro" also works) |
+| `--no-wake` | act on everything heard, no wake word |
+| `--push-to-talk` | press Enter to start and again to finish each command (noisy rooms) |
+| `--mic-test` | live microphone levels for 12 s, with a diagnosis if nothing arrives |
+| `--text` | type instead of speaking — no microphone or voice extra needed |
+| `--quiet` | print replies instead of speaking them |
+| `--stt-model small.en` | a more accurate (slower) Whisper model |
+
+Voice adds one risk of its own, mishearing, so it adds controls for it: the
+recognised command is printed before anything runs; a low-confidence
+transcription is asked again, never acted on; an R2 plan needs a clear spoken
+"yes" and anything with a negation ("no", "wait", "cancel") refuses; and an R3
+plan can **never** be approved by voice — the token must be typed, and
+`ConsentGate` itself rejects a non-typed R3 approval. Pinned by
+[`tests/test_voice.py`](tests/test_voice.py).
+
+To start it by typing `Run MAESTRO`, add this to `~/.zshrc`:
+
+```bash
+Run() { [ "$1" = "MAESTRO" ] && (cd /path/to/Project && .venv/bin/maestro voice "${@:2}"); }
+```
+
+The listen loop is a Python port of
+[cyanxcode/Web-Call-Agent](https://github.com/cyanxcode/Web-Call-Agent)'s
+browser flow (voice activity detection → record → transcribe → reply → speak),
+moved into the terminal and onto local models.
+
+### Gmail, Google Drive and Google Calendar
+
+```bash
+pip install -e ".[google]"
+```
+
+```bash
+maestro google connect
+```
+
+Then *"check my inbox"*, *"read my latest email from the bank"*, *"draft a
+gmail to prof@amity.edu about the report"*, *"find my DSA notes in google
+drive"*, *"upload the pdfs in downloads to my drive"*, *"check my last 15
+emails for tests or tickets and add reminders to my calendar"* — typed or
+spoken. The
+one-time Google Cloud setup (free, ~10 minutes) is in
+[`docs/GOOGLE-SETUP.md`](docs/GOOGLE-SETUP.md).
+
+The same envelope applies. Reading mail and Drive never asks; a Gmail draft and
+a Drive upload are R2 network writes that need your approval; **sending mail,
+sharing and deleting in Drive are hard-blocked** (`email.send`, `drive.share`,
+`drive.delete` have no executor). Email bodies are untrusted: shown to you,
+never obeyed. For calendar reminders, dates are found by deterministic rules and
+schema.org booking data (`maestro/google/events.py`, no model reads your mail);
+the consent preview lists every event before anything is added, events never
+have guests, and only the last 15 emails are ever read. Requests are routed by
+the deterministic rules in
+[`maestro/nlp/services.py`](maestro/nlp/services.py), so the trained intent
+classifier and DeskPlan keep their 16 classes and every reported number is
+unchanged. Pinned by [`tests/test_google.py`](tests/test_google.py).
+
 ---
 
 ## How it works

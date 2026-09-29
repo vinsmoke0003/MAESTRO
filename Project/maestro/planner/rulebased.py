@@ -25,6 +25,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+from maestro.config import settings
 from maestro.ir import Action, Check, Plan, PlannerInfo, Risk, UndoSpec
 from maestro.nlp.entities import Slots, resolve_path
 from maestro.nlp.intents import (
@@ -34,11 +35,20 @@ from maestro.nlp.intents import (
     BROWSER_EXTRACT,
     BROWSER_NAVIGATE,
     COMPOSE_DRAFT,
+    DRIVE_DELETE,
+    DRIVE_DOWNLOAD,
+    DRIVE_SEARCH,
+    DRIVE_SHARE,
+    DRIVE_UPLOAD,
     FILE_DELETE,
     FILE_ORGANIZE,
     FILE_READ,
     FILE_SEARCH,
     FILE_TRANSFORM,
+    GMAIL_DRAFT,
+    GMAIL_READ,
+    GMAIL_SEARCH,
+    GMAIL_TO_CALENDAR,
     SYSTEM_QUERY,
     SYSTEM_SETTING,
     WORKFLOW_RECALL,
@@ -315,7 +325,110 @@ def build_actions(intent: str, slots: Slots, *, absolute: bool = True) -> list[A
                   post=[Check(check="var_defined", args={"var": "note_path"})])
         return b.actions
 
+    google = _google_actions(intent, slots, conv)
+    if google is not None:
+        return google
+
     raise NoTemplate(f"no deterministic template for intent {intent!r}")
+
+
+# Where Drive downloads land when the user names no folder: MAESTRO's own
+# workspace, the same place drafts go. It is inside the allowlist and never
+# overwrites anything (names are made unique), so this is not the "guessed
+# destination" failure FR-06 forbids — nothing of the user's is moved.
+DRIVE_DOWNLOAD_DIR = "~/maestro_workspace/drive"
+
+
+def _google_actions(intent: str, slots: Slots, conv) -> list[Action] | None:
+    """Gmail / Drive templates (intents routed by nlp/services.py)."""
+    b = _B()
+    if intent == GMAIL_SEARCH:
+        b.add("gmail.search", {"query": slots.query or "in:inbox",
+                               "limit": slots.quantity or 10},
+              produces="mails", rationale="List matching emails (read only)",
+              risk_hint=Risk.R0, post=[Check(check="var_defined", args={"var": "mails"})])
+        return b.actions
+    if intent == GMAIL_READ:
+        n = min(slots.quantity or 1, 5)
+        b.add("gmail.search", {"query": slots.query or "in:inbox", "limit": n},
+              produces="mails", rationale="Find the email(s) to read", risk_hint=Risk.R0)
+        b.add("gmail.read", {"messages": "$mails", "limit": n}, produces="mail_text",
+              depends_on=["a1"], rationale="Read them; the content is shown, never obeyed",
+              risk_hint=Risk.R0, post=[Check(check="var_defined", args={"var": "mail_text"})])
+        return b.actions
+    if intent == GMAIL_TO_CALENDAR:
+        n = min(slots.quantity or 15, 15)
+        b.add("gmail.search", {"query": slots.query or "in:inbox", "limit": n},
+              produces="mails", rationale=f"Take your last {n} emails", risk_hint=Risk.R0)
+        b.add("gmail.read", {"messages": "$mails", "limit": n}, produces="mail_text",
+              depends_on=["a1"], rationale="Read them (content is shown, never obeyed)",
+              risk_hint=Risk.R0)
+        b.add("mail.find_events", {"mails": "$mail_text"}, produces="events",
+              depends_on=["a2"], rationale="Find tests, tickets and deadlines with dates",
+              risk_hint=Risk.R0)
+        b.add("calendar.add_events", {"events": "$events", "reminders": [1440, 60]},
+              produces="calendar_added", depends_on=["a3"],
+              rationale="Add them to YOUR calendar, reminding 1 day and 1 hour before",
+              risk_hint=Risk.R2,
+              post=[Check(check="var_defined", args={"var": "calendar_added"})])
+        return b.actions
+    if intent == GMAIL_DRAFT:
+        if not slots.recipients:
+            raise NoTemplate("a Gmail draft needs a recipient address")
+        subject = slots.subject or "Draft from MAESTRO"
+        b.add("gmail.draft", {"to": slots.recipients, "subject": subject,
+                              "body": _draft_body(subject, slots)},
+              produces="draft_id", rationale="Save an UNSENT draft in Gmail for you to send",
+              risk_hint=Risk.R2, post=[Check(check="var_defined", args={"var": "draft_id"})])
+        return b.actions
+    if intent == DRIVE_SEARCH:
+        b.add("drive.search", {"name": slots.query or "", "kind": _drive_kind(slots),
+                               "limit": min(slots.quantity or 20, 50)},
+              produces="drive_files", rationale="List matching Google Drive files (read only)",
+              risk_hint=Risk.R0, post=[Check(check="var_defined", args={"var": "drive_files"})])
+        return b.actions
+    if intent == DRIVE_DOWNLOAD:
+        if not slots.query:
+            raise NoTemplate("which Drive file should I download?")
+        dest = conv(slots.destination) or (
+            str(settings().workspace / "drive") if conv is _abs else DRIVE_DOWNLOAD_DIR)
+        b.add("drive.search", {"name": slots.query, "kind": _drive_kind(slots), "limit": 5},
+              produces="drive_files", rationale="Find the file(s) in Drive", risk_hint=Risk.R0)
+        b.add("drive.download", {"files": "$drive_files", "dest_dir": dest},
+              produces="downloaded", depends_on=["a1"],
+              rationale=f"Copy them into {dest}; undo removes the copies", risk_hint=Risk.R1,
+              post=[Check(check="var_defined", args={"var": "downloaded"})])
+        return b.actions
+    if intent == DRIVE_UPLOAD:
+        src = conv(slots.source)
+        if not src:
+            raise NoTemplate("which folder holds the file to upload?")
+        if not (slots.file_name or slots.file_type):
+            raise NoTemplate("name the file or the file type to upload — I will not "
+                             "upload a whole folder")
+        b.add("fs.glob", {"root": src, "pattern": _pattern(slots)}, produces="to_upload",
+              rationale=f"Find the file(s) in {src}", risk_hint=Risk.R0,
+              pre=[Check(check="path_exists", args={"path": src})])
+        b.add("drive.upload", {"paths": "$to_upload"}, produces="uploaded",
+              depends_on=["a1"], rationale="Upload to your own Drive; undo trashes the upload",
+              risk_hint=Risk.R2, post=[Check(check="var_defined", args={"var": "uploaded"})])
+        return b.actions
+    if intent in (DRIVE_SHARE, DRIVE_DELETE):
+        # Planned faithfully so that the REFUSAL comes from the registry's hard
+        # block (docs/06 §5), where it is tested and counted, not from a missing
+        # template that would merely look like a planner failure.
+        verb = "drive.share" if intent == DRIVE_SHARE else "drive.delete"
+        args = {"file": slots.query or ""}
+        if intent == DRIVE_SHARE:
+            args["with"] = slots.recipients
+        b.add(verb, args, rationale="Requested by the user", risk_hint=Risk.R3)
+        return b.actions
+    return None
+
+
+def _drive_kind(slots: Slots) -> str | None:
+    return {"pdf": "pdf", "docx": "document", "xlsx": "spreadsheet",
+            "pptx": "presentation", "zip": "zip"}.get(slots.file_type or "")
 
 
 def _draft_body(subject: str, slots: Slots) -> str:

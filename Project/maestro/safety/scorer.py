@@ -177,7 +177,15 @@ def score_action(
                          "R_irreversible")
 
     # RULE 5 — bulk operations are consequential even when reversible.
-    if estimated_files is not None and estimated_files > bulk_n:
+    #
+    # Only for verbs that change something. A pure read (base R0: glob, stat,
+    # list_dir, search) has no effect to be consequential about, however many
+    # files it looks at; asking "may I *look* at your 27 PDFs?" is exactly the
+    # false confirmation that trains users to approve without reading (docs/06
+    # §4). Departure from the docs/06 §2 pseudocode, recorded in
+    # Project/docs/README.md.
+    if (estimated_files is not None and estimated_files > bulk_n
+            and spec.base_risk > Risk.R0):
         risk = _raise_to(risk, Risk.R2, bits,
                          f"touches {estimated_files} files (> {bulk_n})", "R_bulk")
 
