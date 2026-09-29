@@ -81,6 +81,8 @@ A safety layer that costs nothing should raise suspicion, and the project says s
 
 ## Quick Start
 
+**New computer? Follow [GETTING-STARTED.md](GETTING-STARTED.md)**: clone, create a venv, `pip install -r requirements.txt`, and run, step by step for macOS and Windows.
+
 Everything below runs from the `Project/` directory. The core path needs only `pydantic` and `send2trash`; no model, no API key, no network.
 
 ```bash
