@@ -76,6 +76,7 @@ class AuditRow:
 
 class AuditLog:
     def __init__(self, db_path: str | Path):
+        """Open (or create) the SQLite audit database at db_path and make sure its table exists."""
         p = Path(db_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p), check_same_thread=False)
@@ -96,6 +97,9 @@ class AuditLog:
         risk: str | None = None,
         detail: str = "",
     ) -> str:
+        """Add one event to the log and return its hash. The hash covers the previous row's hash
+        plus this row, which is what chains the log together and makes later edits detectable.
+        """
         if event not in EVENTS:
             raise ValueError(f"unknown audit event {event!r}")
         prev = self.head()
@@ -114,12 +118,14 @@ class AuditLog:
     # -- reading -----------------------------------------------------------
 
     def head(self) -> str:
+        """Return the hash of the newest row, or the fixed GENESIS value when the log is empty."""
         row = self._conn.execute(
             "SELECT hash FROM audit_log ORDER BY seq DESC LIMIT 1"
         ).fetchone()
         return row[0] if row else GENESIS
 
     def rows(self, plan_id: str | None = None) -> list[AuditRow]:
+        """Return every logged row in order, optionally only the rows for one plan."""
         sql = ("SELECT seq, ts, episode_id, plan_id, action_id, verb, args_json, risk,"
                " event, detail, prev_hash, hash FROM audit_log")
         params: tuple = ()
@@ -130,6 +136,7 @@ class AuditLog:
         return [AuditRow(*r) for r in self._conn.execute(sql, params)]
 
     def count(self, event: str | None = None) -> int:
+        """Count the logged events, either all of them or only those of one event type."""
         if event:
             return int(self._conn.execute(
                 "SELECT COUNT(*) FROM audit_log WHERE event = ?", (event,)
@@ -157,9 +164,11 @@ class AuditLog:
         return True, None, "chain intact"
 
     def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()
 
 
 def _row_hash(prev: str, row: tuple) -> str:
+    """SHA-256 of the previous hash plus this row's fields: the link that chains row to row."""
     body = json.dumps(list(row), separators=(",", ":"))
     return hashlib.sha256((prev + body).encode()).hexdigest()

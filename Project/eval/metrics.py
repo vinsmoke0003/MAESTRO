@@ -49,15 +49,18 @@ GATED = {"confirm", "typed_confirm"}
 
 
 def pct(numerator: int, denominator: int) -> float:
+    """A percentage, or 0 when the denominator is 0."""
     return 100.0 * numerator / denominator if denominator else 0.0
 
 
 def mean(xs: Sequence[float]) -> float:
+    """The average, ignoring missing values."""
     xs = [x for x in xs if x is not None]
     return sum(xs) / len(xs) if xs else 0.0
 
 
 def stdev(xs: Sequence[float]) -> float:
+    """The sample standard deviation, ignoring missing values."""
     xs = [x for x in xs if x is not None]
     if len(xs) < 2:
         return 0.0
@@ -66,6 +69,7 @@ def stdev(xs: Sequence[float]) -> float:
 
 
 def percentile(xs: Sequence[float], p: float) -> float:
+    """The p-th percentile (nearest rank), ignoring missing values."""
     xs = sorted(x for x in xs if x is not None)
     if not xs:
         return 0.0
@@ -128,6 +132,7 @@ def cohens_d(a: Sequence[float], b: Sequence[float]) -> float:
 
 
 def _canon_action(a: dict) -> str:
+    """An action's verb and arguments in canonical JSON, so two plans can be compared exactly."""
     from maestro.ir.model import _canon_value  # reuse the IR's own canonical form
 
     return json.dumps({"verb": a.get("verb"), "args": _canon_value(a.get("args", {}))},
@@ -191,9 +196,11 @@ class MetricSet:
     values: dict[str, Any] = field(default_factory=dict)
 
     def __getitem__(self, key: str) -> Any:
+        """Read one metric by name."""
         return self.values[key]
 
     def as_dict(self) -> dict:
+        """The metric set as a plain dict."""
         return {"name": self.name, "n": self.n, **self.values}
 
 
@@ -415,6 +422,9 @@ FAILURE_RULES: list[tuple[str, str]] = [
 
 
 def classify_failure(r: dict) -> str:
+    """Put a failed run into a failure category (wrong intent, missing clarification, bad plan,
+    execution error, ...) for the failure table.
+    """
     status = r.get("status", "")
     detail = f"{r.get('detail', '')} {r.get('message', '')}".lower()
 

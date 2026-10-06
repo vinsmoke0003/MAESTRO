@@ -211,6 +211,8 @@ def _shape(instruction: str) -> str:
 
 
 def _difficulty(n_actions: int, behavior: str, note: str) -> str:
+    """Estimate a row's difficulty from its number of steps, its expected behaviour and its notes.
+    """
     if behavior == "clarify":
         return "hard"
     if "memory reference" in note or "temporal" in note:
@@ -236,6 +238,9 @@ def make_record(
     difficulty: str | None = None,
     group_override: str | None = None,
 ) -> dict:
+    """Build one DeskPlan row: the instruction, intent, slots, the gold plan (checked by the safety
+    scorer), expected behaviour, difficulty and source.
+    """
     overrides = overrides or {}
     gold, extracted = _slots_from(instruction, intent, overrides, extractor)
 
@@ -321,6 +326,7 @@ def _recovery(gold: Slots, extracted: Slots) -> dict:
 
 
 def _hash(s: str) -> str:
+    """A short stable hash of a string, used for paraphrase-group ids."""
     import hashlib
 
     return hashlib.sha1(s.encode()).hexdigest()[:10]
@@ -333,6 +339,9 @@ def _hash(s: str) -> str:
 
 def gen_seeds(extractor: EntityExtractor, policy: PathPolicy,
               dropped: Counter) -> list[dict]:
+    """Turn the hand-written seed instructions into dataset rows; rows whose plan fails validation
+    are dropped and counted.
+    """
     out: list[dict] = []
     for i, (instruction, intent, overrides, difficulty, note) in enumerate(seeds.SEEDS):
         behavior = "refuse" if intent in ("UNSAFE_REQUEST", "OUT_OF_SCOPE") else None
@@ -360,12 +369,18 @@ def gen_seeds(extractor: EntityExtractor, policy: PathPolicy,
 
 def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPolicy,
                   dropped: Counter) -> list[dict]:
+    """Generate rows from the template grammar: each family fills its sentence forms with random
+    folders, file types, apps, URLs, etc., up to its quota.
+    """
     g = grammar
     out: list[dict] = []
     n = 0
 
     def emit(family: str, text: str, intent: str, overrides: dict,
              behavior: str | None = None) -> None:
+        """Turn one generated sentence into a dataset row and add it, grouping paraphrases of the
+        same task together.
+        """
         nonlocal n
         group = None
         if family in SHAPE_GROUPED:
@@ -389,6 +404,9 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
             dropped[f"{family}: {str(e)[:50]}"] += 1
 
     def sample(family: str, forms: list[str], builder) -> None:
+        """Fill a family's sentence forms until its quota of distinct sentences is reached (with a
+        limit on attempts).
+        """
         quota = TEMPLATE_QUOTAS[family]
         seen: set[str] = set()
         attempts = 0
@@ -404,6 +422,7 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
 
     # ---- file organise ---------------------------------------------------
     def b_organize(form: str):
+        """Fill a 'move these files from A to B' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         dst_s, dst_v = rng.choice(g.DESTS)
         ft, ftp, ext = rng.choice(g.FILETYPES)
@@ -412,6 +431,7 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
                                      "file_type": ext, "group_by": None}, None
 
     def b_organize_recent(form: str):
+        """Fill a 'move files newer/older than N days' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         dst_s, dst_v = rng.choice(g.DESTS)
         ft, ftp, ext = rng.choice(g.FILETYPES)
@@ -422,18 +442,21 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
                                      "group_by": None}, None
 
     def b_organize_by_type(form: str):
+        """Fill an 'organise this folder by file type' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         return (form.format(src=src_s), FILE_ORGANIZE,
                 {"source": src_v, "destination": None, "file_type": None,
                  "group_by": "type"}, None)
 
     def b_search(form: str):
+        """Fill a 'find files of this type' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         ft, ftp, ext = rng.choice(g.FILETYPES)
         return (form.format(src=src_s, ft=ft, ftp=ftp, ext=ext), FILE_SEARCH,
                 {"source": src_v, "file_type": ext, "days": None}, None)
 
     def b_search_recent(form: str):
+        """Fill a 'find files changed in the last N days' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         ft, ftp, ext = rng.choice(g.FILETYPES)
         dur_s, days = rng.choice(g.DURATIONS)
@@ -441,12 +464,14 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
                 {"source": src_v, "file_type": ext, "days": days}, None)
 
     def b_delete(form: str):
+        """Fill a 'delete these files' form (they go to the Trash)."""
         src_s, src_v = rng.choice(g.SOURCES)
         ft, ftp, ext = rng.choice(g.FILETYPES)
         return (form.format(src=src_s, ft=ft, ftp=ftp), FILE_DELETE,
                 {"source": src_v, "file_type": ext}, None)
 
     def b_transform(form: str):
+        """Fill a 'copy these files to another folder' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         dst_s, dst_v = rng.choice(g.DESTS)
         ft, ftp, ext = rng.choice(g.FILETYPES)
@@ -454,60 +479,74 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
                 {"source": src_v, "destination": dst_v, "file_type": ext}, None)
 
     def b_read(form: str):
+        """Fill a 'read / show this file' form."""
         src_s, src_v = rng.choice(g.SOURCES)
         ft, ftp, ext = rng.choice(g.FILETYPES[:8])
         return (form.format(src=src_s, ft=ft, ftp=ftp), FILE_READ,
                 {"source": src_v, "file_type": ext, "file_name": None}, None)
 
     def b_app_launch(form: str):
+        """Fill an 'open this app' form."""
         app = rng.choice(g.APPS)
         return form.format(app=app), APP_LAUNCH, {"app": app.lower()}, None
 
     def b_app_quit(form: str):
+        """Fill a 'close this app' form."""
         app = rng.choice(g.APPS)
         return form.format(app=app), APP_CONTROL, {"app": app.lower()}, None
 
     def b_browser_nav(form: str):
+        """Fill a 'go to this website' form."""
         url = rng.choice(g.URLS)
         return form.format(url=url), BROWSER_NAVIGATE, {"url": url}, None
 
     def b_browser_extract(form: str):
+        """Fill a 'read the text from this website' form."""
         url = rng.choice(g.URLS)
         return form.format(url=url), BROWSER_EXTRACT, {"url": url}, None
 
     def b_browser_download(form: str):
+        """Fill a 'download from this URL' form."""
         url = rng.choice(g.URLS)
         dst_s, dst_v = rng.choice(g.DESTS)
         return (form.format(url=url, dst=dst_s), BROWSER_DOWNLOAD,
                 {"url": url, "destination": dst_v, "file_name": None}, None)
 
     def b_system_query(form: str):
+        """Fill a 'how much disk / memory / battery' form."""
         label, metric = rng.choice(g.METRICS)
         return form.format(metric=label), SYSTEM_QUERY, {"metric": metric}, None
 
     def b_time_query(form: str):
+        """A 'what time is it' sentence."""
         return form, SYSTEM_QUERY, {"metric": "time"}, None
 
     def b_os_query(form: str):
+        """A 'what operating system is this' sentence."""
         return form, SYSTEM_QUERY, {"metric": "os"}, None
 
     def b_system_setting(form: str):
+        """Fill a 'set the volume to N' form."""
         level = rng.choice([0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100])
         return (form.format(level=level), SYSTEM_SETTING,
                 {"setting_key": "volume", "setting_value": str(level)}, None)
 
     def b_draft_email(form: str):
+        """Fill a 'draft an email to X about Y' form."""
         to = rng.choice(g.RECIPIENTS)
         subject = rng.choice(g.SUBJECTS)
         return (form.format(to=to, subject=subject), COMPOSE_DRAFT,
                 {"recipients": [to], "subject": subject}, None)
 
     def b_draft_note(form: str):
+        """Fill a 'write a note about Y' form."""
         subject = rng.choice(g.SUBJECTS)
         return (form.format(subject=subject), COMPOSE_DRAFT,
                 {"recipients": [], "subject": subject}, None)
 
     def b_clarify(form: str):
+        """Fill a vague request (e.g. 'clean up Downloads') whose correct response is a question.
+        """
         src_s, src_v = rng.choice(g.SOURCES)
         return (form.format(src=src_s), FILE_DELETE, {"source": src_v}, "clarify")
 
@@ -526,6 +565,7 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
     }
 
     def b_recall(form: str):
+        """Fill a 'do what I did last time' form that relies on memory."""
         src_s, src_v = rng.choice(g.SOURCES)
         ft, ftp, ext = rng.choice(g.FILETYPES)
         return (form.format(src=src_s, ft=ft, ftp=ftp), WORKFLOW_RECALL,
@@ -534,6 +574,9 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
                  "file_type": ext, "group_by": None}, None)
 
     def b_unsafe(form: str):
+        """Fill an unsafe request (permanent delete, send email, system files...) that must be
+        refused.
+        """
         # `form` here is the template string; the category rides along in the
         # note so the report can break refusals down by hard-block class.
         src_s, src_v = rng.choice(g.SOURCES)
@@ -544,6 +587,7 @@ def gen_templates(rng: random.Random, extractor: EntityExtractor, policy: PathPo
         return text, UNSAFE_REQUEST, {}, "refuse"
 
     def b_oos(form: str):
+        """Fill an out-of-scope request (not a desktop task) that must be refused."""
         fills = {k: rng.choice(v) for k, v in g.OOS_FILLERS.items()}
         return form.format(**fills), OUT_OF_SCOPE, {}, "refuse"
 
@@ -635,6 +679,9 @@ def gen_adversarial(extractor: EntityExtractor, policy: PathPolicy) -> list[dict
 
     def row(group: str, instruction: str, behavior: str, control: str, note: str,
             payload: str | None = None) -> dict:
+        """Build one adversarial row: the attack, the behaviour expected, which control should stop
+        it, and an optional injected payload.
+        """
         nonlocal n
         n += 1
         gold = extractor.slots(instruction)
@@ -725,6 +772,7 @@ _QUESTION_STARTS = ("what", "which", "where", "when", "who", "how", "why", "is "
 
 
 def _is_question(text: str) -> bool:
+    """True if a text reads as a question (ends with '?' or starts with a question word)."""
     t = text.strip().lower()
     return t.endswith("?") or t.startswith(_QUESTION_STARTS)
 
@@ -793,6 +841,7 @@ def split_by_group(rows: list[dict], rng: random.Random,
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> int:
+    """Write rows to a JSON-lines file and return how many."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         for r in rows:
@@ -801,6 +850,7 @@ def write_jsonl(path: Path, rows: list[dict]) -> int:
 
 
 def read_jsonl(path: Path) -> list[dict]:
+    """Read a JSON-lines file ([] if it does not exist)."""
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
@@ -809,7 +859,11 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def build_stats(all_rows: list[dict], adv: list[dict], splits: dict[str, list[dict]],
                 dropped: Counter) -> dict:
+    """Count the dataset by intent, behaviour, difficulty, source, split and verb, plus the rows
+    dropped and why.
+    """
     def counter(key: str, rows: list[dict]) -> dict:
+        """Count rows by one field, most common first."""
         return dict(Counter(str(r.get(key)) for r in rows).most_common())
 
     recovery = [r["slot_recovery"]["rate"] for r in all_rows if "slot_recovery" in r]
@@ -927,7 +981,9 @@ PRD). Until then: internal project use.
 
 
 def write_card(stats: dict) -> str:
+    """Write the dataset card (Markdown) from the statistics."""
     def table(d: dict, how: dict[str, str] | None = None) -> str:
+        """A two-column Markdown table from a dict."""
         rows = []
         for k, v in d.items():
             extra = f" | {how[k]}" if how and k in how else ""
@@ -1015,6 +1071,10 @@ SCHEMA = {
 
 
 def build() -> dict:
+    """Build the whole DeskPlan dataset: seeds, templates and adversarial rows, split by paraphrase
+    group into train/val/test (so no phrasing leaks between splits), then write the files and
+    statistics.
+    """
     rng = random.Random(SEED)
     extractor = EntityExtractor(today=date.fromisoformat(CONTEXT_DATE))
     policy = PathPolicy()
@@ -1061,6 +1121,7 @@ def build() -> dict:
 
 
 def print_stats(stats: dict) -> None:
+    """Print the dataset totals and breakdowns."""
     print()
     print(f"TOTAL {stats['total_pairs']} rows "
           f"({stats['task_pairs']} task + {stats['adversarial_pairs']} adversarial) "
@@ -1074,6 +1135,7 @@ def print_stats(stats: dict) -> None:
 
 
 def main() -> int:
+    """Command line: build the dataset, or print the existing statistics with --stats."""
     ap = argparse.ArgumentParser(description="build the DeskPlan dataset")
     ap.add_argument("--stats", action="store_true", help="print existing stats only")
     args = ap.parse_args()

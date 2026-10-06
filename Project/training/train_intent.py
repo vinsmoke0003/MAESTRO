@@ -53,6 +53,7 @@ SEED = 42
 
 
 def load(split: str) -> tuple[list[str], list[str]]:
+    """Read the intent texts and labels for one split."""
     path = DATA / f"intent_{split}.jsonl"
     if not path.exists():
         raise SystemExit(f"{path} is missing — run `python data/build_dataset.py`")
@@ -63,6 +64,9 @@ def load(split: str) -> tuple[list[str], list[str]]:
 
 
 def timed_predict(predict, texts: list[str]) -> tuple[list[str], float]:
+    """Predict every text and return the predictions with the average time per prediction
+    (microseconds).
+    """
     t0 = time.perf_counter()
     preds = [predict(t) for t in texts]
     us = (time.perf_counter() - t0) * 1e6 / max(1, len(texts))
@@ -75,6 +79,9 @@ def timed_predict(predict, texts: list[str]) -> tuple[list[str], float]:
 
 
 def train(save: bool = True, verbose: bool = True) -> dict:
+    """Train the TF-IDF + calibrated LinearSVC intent classifier, report validation and test
+    accuracy, and optionally save it.
+    """
     Xtr, ytr = load("train")
     Xva, yva = load("val")
     Xte, yte = load("test")
@@ -124,6 +131,7 @@ def train(save: bool = True, verbose: bool = True) -> dict:
 
 
 def print_report(name: str, rep: dict) -> None:
+    """Print accuracy, macro-F1, latency and the per-intent scores."""
     print()
     print(f"--- {name} ---")
     print(f"  n={rep['n']}  accuracy {rep['accuracy']}%  macro-F1 {rep['macro_f1']}  "
@@ -148,6 +156,9 @@ def print_report(name: str, rep: dict) -> None:
 
 
 def compare() -> dict:
+    """Compare four intent classifiers on the test split, with a latency column: the rule
+    baseline, TF-IDF + LinearSVC, TF-IDF + logistic regression, and the shipping calibrated model.
+    """
     Xtr, ytr = load("train")
     Xva, yva = load("val")
     Xte, yte = load("test")
@@ -182,6 +193,7 @@ def compare() -> dict:
         fit_s = time.perf_counter() - t0
 
         def predict(t, _p=pipe):
+            """Predict with the prefilter first, then the model (the same order MAESTRO uses)."""
             pre = safety_prefilter(t)
             return pre[0] if pre else _p.predict([t])[0]
 
@@ -230,6 +242,8 @@ def compare() -> dict:
 
 
 def main() -> int:
+    """Command line: train (and save) the intent classifier, or compare baselines with --compare.
+    """
     ap = argparse.ArgumentParser(description="train MAESTRO's intent classifier")
     ap.add_argument("--compare", action="store_true",
                     help="run all four baselines with a latency column")

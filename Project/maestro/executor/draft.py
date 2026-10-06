@@ -60,12 +60,14 @@ register(VerbSpec("email.send", SendEmailArgs, Risk.R3, reversible=False, hard_b
 
 
 def _drafts_dir() -> Path:
+    """The drafts folder inside MAESTRO's workspace, created if needed."""
     d = settings().workspace / "drafts"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def _slug(s: str, fallback: str = "draft") -> str:
+    """Turn a subject or title into a safe file name."""
     out = re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")[:60]
     return out or fallback
 
@@ -74,6 +76,7 @@ class DraftEmailExecutor:
     verb = "draft.email"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: who the draft is to and its subject, noting that it will not be sent."""
         a = DraftEmailArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Draft an email to {', '.join(a.to) or '(no recipient)'} "
@@ -85,6 +88,9 @@ class DraftEmailExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Save the email as an unsent .eml draft in the workspace; the user opens it and sends it
+        themselves.
+        """
         a = DraftEmailArgs.model_validate(resolve(args, ctx))
         msg = EmailMessage()
         msg["To"] = ", ".join(a.to)
@@ -100,6 +106,7 @@ class DraftEmailExecutor:
                       undo_data={"draft": str(target)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the draft file."""
         d = result.undo_data or {}
         if d.get("draft"):
             Path(d["draft"]).unlink(missing_ok=True)
@@ -109,6 +116,7 @@ class DraftNoteExecutor:
     verb = "draft.note"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the note's title and length."""
         a = DraftNoteArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Write note {a.title!r} ({len(a.body)} chars)",
@@ -118,6 +126,7 @@ class DraftNoteExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Save the note as a Markdown file in the workspace."""
         a = DraftNoteArgs.model_validate(resolve(args, ctx))
         target = _unique(_drafts_dir() / (_slug(a.title, "note") + ".md"))
         target.write_text(f"# {a.title}\n\n{a.body}\n", encoding="utf-8")
@@ -126,12 +135,16 @@ class DraftNoteExecutor:
                       undo_data={"note": str(target)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the note file."""
         d = result.undo_data or {}
         if d.get("note"):
             Path(d["note"]).unlink(missing_ok=True)
 
 
 def _unique(target: Path) -> Path:
+    """Return the path itself if it is free, otherwise 'name (1).ext', 'name (2).ext', ... so
+    nothing is overwritten.
+    """
     if not target.exists():
         return target
     for i in range(1, 1000):

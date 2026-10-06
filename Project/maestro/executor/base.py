@@ -39,9 +39,11 @@ class Context:
     session: Any = None
 
     def bind(self, name: str, value: Any) -> None:
+        """Store a step's output under its variable name so later steps can use it."""
         self.variables[name] = value
 
     def get(self, name: str, default: Any = None) -> Any:
+        """Read a stored variable, or the default if it is not set."""
         return self.variables.get(name, default)
 
     def close(self) -> None:
@@ -62,6 +64,9 @@ def resolve(args: dict, ctx: Context) -> dict:
     """Substitute `$var` references with their bound values."""
 
     def walk(v: Any) -> Any:
+        """Replace each $variable in a value with its stored result, recursing into lists and
+        dicts; an unknown variable raises UnboundVariable.
+        """
         if isinstance(v, str):
             m = VAR_RE.match(v)
             if m:
@@ -100,6 +105,7 @@ class EffectManifest:
 
     @property
     def predictable(self) -> bool:
+        """True when the dry run could predict everything (no unknowns)."""
         return not self.unknowns
 
 
@@ -119,17 +125,25 @@ class Result:
 class Executor(Protocol):
     verb: str
 
-    def dry_run(self, args: dict, ctx: Context) -> EffectManifest: ...
+    def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Describe what this verb WOULD do, without changing anything. The result is shown in the
+        consent preview.
+        """
 
-    def execute(self, args: dict, ctx: Context) -> Result: ...
+    def execute(self, args: dict, ctx: Context) -> Result:
+        """Do the work for real and return a Result (with undo data when the action can be
+        reversed).
+        """
 
-    def undo(self, result: Result, ctx: Context) -> None: ...
+    def undo(self, result: Result, ctx: Context) -> None:
+        """Reverse a previous execute() using the undo data it returned."""
 
 
 _EXECUTORS: dict[str, Executor] = {}
 
 
 def register_executor(ex: Executor) -> Executor:
+    """Register the object that performs a verb. Each verb may have only one."""
     if ex.verb in _EXECUTORS:
         raise ValueError(f"executor for {ex.verb!r} registered twice")
     _EXECUTORS[ex.verb] = ex
@@ -137,6 +151,9 @@ def register_executor(ex: Executor) -> Executor:
 
 
 def get_executor(verb: str) -> Executor:
+    """Return the executor for a verb; a hard-blocked verb has none, so this raises KeyError for
+    it.
+    """
     try:
         return _EXECUTORS[verb]
     except KeyError:
@@ -144,10 +161,12 @@ def get_executor(verb: str) -> Executor:
 
 
 def has_executor(verb: str) -> bool:
+    """True if a verb has an executor (hard-blocked verbs do not)."""
     return verb in _EXECUTORS
 
 
 def registered_verbs() -> list[str]:
+    """Every verb that has an executor, sorted."""
     return sorted(_EXECUTORS)
 
 

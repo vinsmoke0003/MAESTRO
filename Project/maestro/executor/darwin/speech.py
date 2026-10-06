@@ -14,10 +14,14 @@ from maestro.executor.base import NotAvailable
 
 
 def available() -> bool:
+    """True if the macOS `say` command exists."""
     return shutil.which("say") is not None
 
 
 def speak(text: str, rate: int | None = None) -> None:
+    """Say the text aloud with `say`, passing it on standard input so it can never be read as a
+    command option.
+    """
     if not available():
         raise NotAvailable("the macOS `say` command was not found")
     cmd = ["say"] + (["-r", str(int(rate))] if rate else [])

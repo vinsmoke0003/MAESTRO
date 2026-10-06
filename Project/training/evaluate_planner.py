@@ -58,6 +58,7 @@ OUT = ROOT / "eval" / "results"
 
 
 def load_test(limit: int | None, include_refusals: bool = True) -> list[dict]:
+    """Load the test split (adversarial rows excluded; refusals optional)."""
     rows = [json.loads(x) for x in TEST.read_text(encoding="utf-8").splitlines()
             if x.strip()]
     rows = [r for r in rows if r.get("source") != "adversarial"]
@@ -91,6 +92,9 @@ def make_planner(model: str | None):
 
 
 def evaluate(model: str | None, limit: int | None) -> dict:
+    """Run a planner (the rule baseline, or an Ollama model) on the test split and score validity,
+    exact match, verb accuracy, refusal handling and latency.
+    """
     planner, label = make_planner(model)
     extractor = EntityExtractor()
     policy = PathPolicy()
@@ -156,6 +160,7 @@ def evaluate(model: str | None, limit: int | None) -> dict:
 
 def summarize(label: str, model: str | None, results: list[dict],
               latencies: list[float]) -> dict:
+    """Turn per-row results into summary metrics."""
     planned = [r for r in results if r["schema_valid"]]
     scored = [r for r in results if "exact_match" in r]
     refusal_rows = [r for r in results
@@ -164,6 +169,7 @@ def summarize(label: str, model: str | None, results: list[dict],
              if r.get("hint_agreement") is not None]
 
     def pct(n: int, d: int) -> float:
+        """A percentage rounded to 2 decimals, or 0 when the denominator is 0."""
         return round(100 * n / d, 2) if d else 0.0
 
     summary = {
@@ -209,6 +215,7 @@ def summarize(label: str, model: str | None, results: list[dict],
 
 
 def print_summary(s: dict, by_difficulty: bool, by_verb: bool) -> None:
+    """Print the planner's results, optionally by difficulty and by verb."""
     print()
     print("=" * 68)
     print(f"planner: {s['planner']}   n={s['n']}")
@@ -246,6 +253,8 @@ def print_summary(s: dict, by_difficulty: bool, by_verb: bool) -> None:
 
 
 def main() -> int:
+    """Command line: evaluate a planner on the DeskPlan test split and optionally save the results.
+    """
     ap = argparse.ArgumentParser(description="evaluate a planner on DeskPlan test")
     ap.add_argument("--model", default=None,
                     help="Ollama model id; omit for the rule baseline")

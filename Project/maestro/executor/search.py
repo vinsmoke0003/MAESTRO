@@ -62,6 +62,9 @@ register(VerbSpec("search.recent", RecentArgs, Risk.R0, reversible=True, categor
 
 
 def _walk(root: Path, recursive: bool, pattern: str = "*"):
+    """Yield the files under a folder (optionally in sub-folders), stopping after MAX_SCAN entries
+    so a huge folder cannot hang a search.
+    """
     if not root.is_dir():
         return
     it = root.rglob(pattern) if recursive else root.glob(pattern)
@@ -76,6 +79,7 @@ class ByNameExecutor:
     verb = "search.by_name"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which folder will be searched for which name."""
         a = ByNameArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Search {a.root} for filenames containing {a.query!r}",
@@ -83,6 +87,7 @@ class ByNameExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Find files whose name contains the query (case-insensitive), up to the limit."""
         a = ByNameArgs.model_validate(resolve(args, ctx))
         q = a.query.lower()
         hits = [str(p) for p in _walk(Path(a.root).expanduser(), a.recursive)
@@ -92,6 +97,7 @@ class ByNameExecutor:
                       files_touched=len(hits))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
 
@@ -99,6 +105,9 @@ class ByContentExecutor:
     verb = "search.by_content"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which folder's file contents will be searched, flagging that matched text is
+        untrusted.
+        """
         a = ByContentArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Search the contents of files in {a.root} for {a.query!r}",
@@ -106,6 +115,9 @@ class ByContentExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Find files whose text contains the query and return a short excerpt from each. Excerpts
+        are untrusted content.
+        """
         a = ByContentArgs.model_validate(resolve(args, ctx))
         q = a.query.lower()
         exts = {e.lower() for e in a.extensions}
@@ -130,6 +142,7 @@ class ByContentExecutor:
                       files_touched=len(hits), untrusted=True)
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
 
@@ -137,11 +150,13 @@ class RecentExecutor:
     verb = "search.recent"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which folder will be searched for recently changed files."""
         a = RecentArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Find files in {a.root} modified in the last "
                                       f"{a.days} day(s)")
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Find files changed in the last N days, up to the limit."""
         a = RecentArgs.model_validate(resolve(args, ctx))
         cutoff = time.time() - a.days * 86400
         hits = []
@@ -156,6 +171,7 @@ class RecentExecutor:
                       files_touched=len(hits))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
 

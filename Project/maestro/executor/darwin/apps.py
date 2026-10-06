@@ -42,10 +42,12 @@ _FORCE_SCRIPT = ('on run argv\n  tell application "System Events" to '
 
 
 def _resolve(app_id: str) -> str:
+    """Map a friendly name like 'chrome' to the macOS application name 'Google Chrome'."""
     return KNOWN_APPS.get(app_id.strip().lower(), app_id.strip())
 
 
 def launch(app_id: str) -> str:
+    """Open an application with `open -a`. Raises NotAvailable if macOS cannot find it."""
     name = _resolve(app_id)
     proc = subprocess.run(["open", "-a", name], capture_output=True, text=True)  # noqa: S603,S607
     if proc.returncode != 0:
@@ -54,6 +56,9 @@ def launch(app_id: str) -> str:
 
 
 def quit(app_id: str, force: bool = False) -> str:  # noqa: A001 - mirrors the verb name
+    """Ask an application to quit via AppleScript (or force it). The name is passed as data, never
+    spliced into the script.
+    """
     name = _resolve(app_id)
     script = _FORCE_SCRIPT if force else _QUIT_SCRIPT
     proc = subprocess.run(  # noqa: S603

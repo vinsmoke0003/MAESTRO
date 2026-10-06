@@ -1,3 +1,5 @@
+"""The Action IR: the typed plan format every planner must produce (see model.py)."""
+
 from maestro.ir.model import (
     Action,
     Budget,

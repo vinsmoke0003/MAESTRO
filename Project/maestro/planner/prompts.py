@@ -65,6 +65,9 @@ def decode_schema() -> dict:
 
 
 def verb_docs() -> str:
+    """List every verb the planner may use, with its arguments, base risk and description, for the
+    model's instructions.
+    """
     lines = []
     for v in registry.plannable_verbs():
         spec = registry.get(v)
@@ -77,6 +80,7 @@ def verb_docs() -> str:
 
 
 def _typename(ann) -> str:
+    """Make a type annotation readable in the prompt (e.g. 'list[str]')."""
     s = str(ann)
     s = s.replace("<class '", "").replace("'>", "")
     s = s.replace("typing.", "").replace("maestro.executor.system.", "")
@@ -153,10 +157,16 @@ EXEMPLARS: list[tuple[str, dict]] = [
 
 
 def system_prompt() -> str:
+    """The model's fixed instructions, including the list of allowed verbs. Training and live use
+    share this exact text.
+    """
     return SYSTEM_PROMPT.format(verbs=verb_docs())
 
 
 def context_block(home: Path | None = None, today: date | None = None) -> str:
+    """The machine context the model sees: platform, home folder, workspace, common folders and
+    today's date.
+    """
     home = home or Path.home()
     today = today or date.today()
     return (
@@ -195,6 +205,9 @@ def slots_block(intent: str | None, slots: Slots | None) -> str:
 def user_prompt(instruction: str, intent: str | None = None, slots: Slots | None = None,
                 home: Path | None = None, exemplars: list[tuple[str, dict]] | None = None,
                 today: date | None = None) -> str:
+    """Build the model's request: context, the extracted intent and slots, a few worked examples,
+    then the instruction.
+    """
     parts = [context_block(home, today)]
     block = slots_block(intent, slots)
     if block:
@@ -213,6 +226,9 @@ def user_prompt(instruction: str, intent: str | None = None, slots: Slots | None
 def repair_prompt(instruction: str, bad_output: str, error: str,
                   intent: str | None = None, slots: Slots | None = None,
                   home: Path | None = None) -> str:
+    """Build the retry request: the instruction, the model's previous output and the validator's
+    error, asking it to fix only that.
+    """
     return (
         context_block(home)
         + slots_block(intent, slots)

@@ -121,6 +121,7 @@ class PathPolicy:
     deny_patterns: list[str] = field(default_factory=lambda: list(DEFAULT_DENY_PATTERNS))
 
     def __post_init__(self) -> None:
+        """Resolve the allow and deny folders once, up front, so each check is fast."""
         # Canonicalise the policy once, not per check: the policy roots do not
         # move, and `check()` is called thousands of times by the harness.
         self._deny_dirs_c = [self._canon(d) for d in self.deny_dirs]
@@ -130,17 +131,25 @@ class PathPolicy:
 
     @staticmethod
     def _canon(p: str | Path) -> Path:
+        """Turn a path into its real absolute form: expand ~ and $VARS, fold '..' and follow
+        symlinks. Matching is only safe on this form.
+        """
         # strict=False: the path may not exist yet (e.g. a mkdir target).
         # resolve() still folds `..` and resolves existing symlink prefixes.
         s = os.path.expandvars(str(p))
         return Path(s).expanduser().resolve(strict=False)
 
     def canonical(self, p: str | Path) -> Path:
+        """Public wrapper: the real absolute form of a path."""
         return self._canon(p)
 
     # -- the decision ------------------------------------------------------
 
     def check(self, p: str | Path) -> PathVerdict:
+        """Classify a path as DENIED (sensitive or unreadable), ALLOWED (inside the workspace
+        roots) or OUTSIDE (legal, but needs consent). The denylist is checked first and always
+        wins.
+        """
         try:
             cp = self._canon(p)
         except (OSError, RuntimeError, ValueError):
@@ -173,6 +182,7 @@ class PathPolicy:
         return PathVerdict.OUTSIDE
 
     def explain(self, p: str | Path) -> str:
+        """A one-line, human-readable reason for the verdict check() gives a path."""
         v = self.check(p)
         if v is PathVerdict.DENIED:
             return f"{p} is on the denylist (or unresolvable) — no override exists"
@@ -191,6 +201,7 @@ class PathPolicy:
 
 
 def _is_relative_to(child: PurePath, parent: PurePath) -> bool:
+    """True if child is inside parent (works on Python versions without Path.is_relative_to)."""
     try:
         child.relative_to(parent)
         return True

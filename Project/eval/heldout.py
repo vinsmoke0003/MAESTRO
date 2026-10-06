@@ -232,6 +232,7 @@ def _dedupe_against_corpus(rows: list[tuple[str, str, str]]) -> list[str]:
 
 
 def observed_behaviour(turn) -> str:
+    """Map a turn's status to what MAESTRO did: execute, clarify or refuse."""
     if turn.status == "refused":
         return "refuse"
     if turn.status == "clarified":
@@ -245,6 +246,9 @@ def observed_behaviour(turn) -> str:
 
 def run_planner(label: str, force_rule: bool, seed: int, verbose: bool,
                 rows: list[tuple[str, str, str]]) -> list[dict]:
+    """Run every held-out phrasing through one planner in a sandbox and record whether the
+    behaviour matched what was expected.
+    """
     from maestro.llm import router
     from maestro.planner import HybridPlanner, Planner
 
@@ -308,6 +312,7 @@ def run_planner(label: str, force_rule: bool, seed: int, verbose: bool,
 
 
 def summarise(records: list[dict]) -> dict:
+    """Accuracy for each expected behaviour (execute, clarify, refuse) and overall."""
     by_expected: dict[str, dict] = {}
     for exp in ("execute", "clarify", "refuse"):
         rows = [r for r in records if r["expected"] == exp]
@@ -329,6 +334,9 @@ def summarise(records: list[dict]) -> dict:
 
 
 def main() -> int:
+    """Command line: evaluate the template and/or LLM planner on unseen phrasings and save the
+    results.
+    """
     ap = argparse.ArgumentParser(description="held-out phrasing evaluation")
     ap.add_argument("--llm-only", action="store_true",
                     help="evaluate only the LLM planner; error if none is reachable")

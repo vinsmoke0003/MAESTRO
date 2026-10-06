@@ -42,6 +42,7 @@ class Risk(IntEnum):
     BLOCKED = 4  # hard-blocked, no override path
 
     def __str__(self) -> str:  # pretty for previews and logs
+        """Show the tier by name (R0, R1, ...) in previews and logs."""
         return self.name
 
 
@@ -61,6 +62,7 @@ class Trust(IntEnum):
     T2 = 2
 
     def __str__(self) -> str:
+        """Show the trust level by name (T0, T1, T2)."""
         return self.name
 
 
@@ -104,6 +106,9 @@ class Action(BaseModel):
     @field_validator("produces")
     @classmethod
     def _produces_is_identifier(cls, v: str | None) -> str | None:
+        """Reject an output name that is not a plain identifier, so $references to it stay
+        unambiguous.
+        """
         if v is not None and not IDENT_RE.match(v):
             raise ValueError(f"produces must be a bare identifier, got {v!r}")
         return v
@@ -114,6 +119,9 @@ class Action(BaseModel):
         refs: set[str] = set()
 
         def walk(value: Any) -> None:
+            """Look through one argument value (string, list or dict) and record every $variable it
+            uses.
+            """
             if isinstance(value, str):
                 m = VAR_RE.match(value)
                 if m:
@@ -182,6 +190,10 @@ class Plan(BaseModel):
 
     @model_validator(mode="after")
     def _validate_dag(self) -> Plan:
+        """Check the whole plan when it is built: stamp its hash and time, reject duplicate ids,
+        too many steps, unknown or self dependencies and cycles, work out the execution order,
+        and make sure every $variable is produced by an earlier step this one depends on.
+        """
         if not self.instruction_hash:
             object.__setattr__(self, "instruction_hash", hash_instruction(self.instruction))
         if not self.created_at:
@@ -244,19 +256,24 @@ class Plan(BaseModel):
 
     @property
     def topo_order(self) -> list[str]:
+        """The order the actions will run in, so every action comes after the ones it depends on.
+        """
         return list(self._topo_order)
 
     @property
     def ancestors(self) -> dict[str, set[str]]:
+        """For each action, every action it depends on directly or indirectly."""
         return {k: set(v) for k, v in self._ancestors.items()}
 
     def action(self, action_id: str) -> Action:
+        """Return one action by its id."""
         for a in self.actions:
             if a.action_id == action_id:
                 return a
         raise KeyError(action_id)
 
     def producer_of(self, var: str) -> Action | None:
+        """Return the action that produces a given $variable, or None."""
         for a in self.actions:
             if a.produces == var:
                 return a
@@ -270,11 +287,15 @@ class Plan(BaseModel):
         )
 
     def fingerprint(self) -> str:
+        """A short hash of the plan's canonical form: two plans with the same steps get the same
+        fingerprint, which is how an approval is tied to exactly the plan the user saw.
+        """
         return hashlib.sha256(
             json.dumps(self.canonical(), sort_keys=True).encode()
         ).hexdigest()[:16]
 
     def verb_sequence(self) -> list[str]:
+        """The list of verbs in execution order, e.g. ['fs.glob', 'fs.move_batch']."""
         return [self.action(aid).verb for aid in self.topo_order]
 
 
@@ -284,6 +305,9 @@ class Plan(BaseModel):
 
 
 def hash_instruction(instruction: str) -> str:
+    """SHA-256 of the user's instruction, so a plan can always be traced to the exact words it came
+    from.
+    """
     return "sha256:" + hashlib.sha256(instruction.strip().encode()).hexdigest()
 
 
@@ -309,10 +333,14 @@ def normalize_path_str(s: str) -> str:
 
 
 def _looks_like_path(s: str) -> bool:
+    """Guess whether a string is a file path (contains a slash or starts with ~)."""
     return ("/" in s or "\\" in s) or s.startswith("~")
 
 
 def _canon_value(v: Any) -> Any:
+    """Normalise one argument value for comparison: tidy path strings, sort dict keys, recurse into
+    lists.
+    """
     if isinstance(v, str):
         return normalize_path_str(v) if _looks_like_path(v) else v
     if isinstance(v, dict):

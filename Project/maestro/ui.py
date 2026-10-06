@@ -50,6 +50,9 @@ class Workspace:
     """Everything the page can see. One instruction in flight at a time."""
 
     def __init__(self, pipeline: MaestroPipeline | None = None):
+        """Set up the web workspace around one pipeline, routing all consent through the page's
+        Approve button and tracking step progress.
+        """
         self.lock = threading.Lock()
         self.gate = ConsentGate(ask=self._ask)
         self.pipe = pipeline or MaestroPipeline(gate=self.gate)
@@ -68,6 +71,10 @@ class Workspace:
     # ---- consent ---------------------------------------------------------
 
     def _ask(self, req: ConsentRequest) -> Approval:
+        """The consent callback: approve only if the user clicked Approve for exactly the plan they
+        previewed (same fingerprint), and for a high-risk plan typed the right confirmation
+        word.
+        """
         grant, self._grant = self._grant, None
         if grant is None:
             return Approval(False, "denied", note="no approval was given in the UI")
@@ -83,6 +90,7 @@ class Workspace:
         return Approval(True, "click")
 
     def _on_step(self, step: StepReport) -> None:
+        """Record each finished step so the page can show live progress."""
         self.progress.append({
             "action_id": step.action_id, "verb": step.verb, "ok": step.ok,
             "detail": step.detail, "ms": round(step.ms, 1),
@@ -94,11 +102,15 @@ class Workspace:
     # ---- turns -----------------------------------------------------------
 
     def plan(self, instruction: str) -> dict:
+        """Plan an instruction and return the preview (or a clarifying question); nothing is
+        executed.
+        """
         with self.lock:
             turn = self.pipe.handle(instruction, preview_only=True)
             return self._settle(turn)
 
     def answer(self, answer: str) -> dict:
+        """Answer the pending clarifying question and return the new preview."""
         with self.lock:
             if self.pending is None:
                 return {"error": "there is no pending question"}
@@ -106,11 +118,15 @@ class Workspace:
             return self._settle(turn)
 
     def _settle(self, turn: Turn) -> dict:
+        """Remember whether the turn is waiting for an answer or showing a preview, and return it
+        as JSON.
+        """
         self.pending = turn if turn.status == "clarified" else None
         self.previewed = turn if turn.status == "previewed" else None
         return turn_json(turn)
 
     def deny(self) -> dict:
+        """Throw away the previewed plan or pending question; nothing changes."""
         with self.lock:
             had = self.previewed is not None
             self.previewed = None
@@ -119,6 +135,9 @@ class Workspace:
                     else "nothing was pending"}
 
     def approve(self, typed: str = "") -> dict:
+        """Start executing the previewed plan in the background. Refuses if nothing is previewed or
+        a run is already going.
+        """
         with self.lock:
             if self.previewed is None:
                 return {"error": "nothing is previewed — preview a plan first"}
@@ -134,6 +153,9 @@ class Workspace:
             return {"started": True, "total": self.job["total"]}
 
     def _execute(self, prev: Turn) -> None:
+        """Background thread: re-run the instruction bound to the previewed plan's fingerprint, so
+        only that exact plan can execute, and store the result.
+        """
         # Holds the workspace lock for the whole run: the stores' SQLite
         # connections are shared across threads on the strength of this lock.
         # `/api/progress` reads only `self.progress`, so polling stays live.
@@ -156,6 +178,9 @@ class Workspace:
                 self.job["done"] = True
 
     def progress_json(self) -> dict:
+        """The running job's status, finished steps and (once done) the result, for the page to
+        poll.
+        """
         job = self.job or {"done": True}
         return {**{k: v for k, v in job.items() if k != "result"},
                 "steps": list(self.progress),
@@ -164,10 +189,12 @@ class Workspace:
     # ---- history / undo ------------------------------------------------------
 
     def history(self, limit: int = 25) -> list[dict]:
+        """Recent episodes for the History panel."""
         with self.lock:
             return self._history(limit)
 
     def _history(self, limit: int) -> list[dict]:
+        """Recent episodes as rows, each marked with whether it can still be undone."""
         rows = []
         for r in self.pipe.episodes.recent(limit):
             undoable = self.pipe.episodes.is_undoable(r)
@@ -186,6 +213,9 @@ class Workspace:
         return rows
 
     def undo(self, episode_id: str | None) -> dict:
+        """Undo the given (or latest undoable) run from its stored plan and results, and record
+        whether the undo fully succeeded.
+        """
         with self.lock:
             store = self.pipe.episodes
             row = store.last_undoable(episode_id)
@@ -218,10 +248,12 @@ class Workspace:
             }
 
     def audit(self) -> dict:
+        """Audit log status for the page."""
         with self.lock:
             return self._audit()
 
     def _audit(self) -> dict:
+        """Whether the audit log's hash chain is intact, the number of events, and the last few."""
         log = self.pipe.orchestrator.audit
         if log is None:
             return {"available": False}
@@ -232,16 +264,21 @@ class Workspace:
                           "detail": (getattr(r, "detail", "") or "")[:90]} for r in tail]}
 
     def state(self) -> dict:
+        """Current state for the page: pipeline description, pending question, preview, and whether
+        a run is going.
+        """
         with self.lock:
             return self._state()
 
     def _state(self) -> dict:
+        """Build the state dict (the caller holds the lock)."""
         return {"pipeline": self.pipe.describe(),
                 "pending": turn_json(self.pending) if self.pending else None,
                 "previewed": turn_json(self.previewed) if self.previewed else None,
                 "running": bool(self.job and not self.job.get("done"))}
 
     def close(self) -> None:
+        """Close the pipeline's databases."""
         self.pipe.close()
 
 
@@ -251,6 +288,9 @@ class Workspace:
 
 
 def turn_json(turn: Turn) -> dict:
+    """A turn as JSON for the page: status, clarification, and every action with its risk, reasons,
+    taint and dry-run summary.
+    """
     d = turn.as_dict()
     d["rounds"] = turn.rounds
     d["clarification"] = None
@@ -296,6 +336,7 @@ def turn_json(turn: Turn) -> dict:
 
 
 def _compact_args(args: dict) -> dict:
+    """Shorten long lists and strings in action arguments so the preview stays readable."""
     out = {}
     for k, v in args.items():
         if isinstance(v, list) and len(v) > 4:
@@ -315,13 +356,16 @@ PAGE = (Path(__file__).parent / "ui.html")
 
 
 def make_handler(ws: Workspace):
+    """Build the HTTP request handler class bound to this workspace."""
     class Handler(BaseHTTPRequestHandler):
         server_version = "maestro-ui/1.0"
 
         def log_message(self, fmt, *args):  # quiet by default
+            """Silence the default per-request logging."""
             return
 
         def _send(self, status: int, body: bytes, ctype: str) -> None:
+            """Send a response with the given status, body and content type (never cached)."""
             self.send_response(status)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
@@ -330,10 +374,12 @@ def make_handler(ws: Workspace):
             self.wfile.write(body)
 
         def _json(self, obj, status: int = 200) -> None:
+            """Send an object as a JSON response."""
             self._send(status, json.dumps(obj, default=str).encode("utf-8"),
                        "application/json; charset=utf-8")
 
         def _body(self) -> dict:
+            """Read the request body as JSON ({} if empty or invalid)."""
             n = int(self.headers.get("Content-Length") or 0)
             raw = self.rfile.read(n) if n else b""
             try:
@@ -342,6 +388,7 @@ def make_handler(ws: Workspace):
                 return {}
 
         def do_GET(self):
+            """Serve the page and the read-only endpoints: state, history, progress and audit."""
             path = urlparse(self.path).path
             if path == "/":
                 self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
@@ -357,6 +404,9 @@ def make_handler(ws: Workspace):
                 self._json({"error": "not found"}, 404)
 
         def do_POST(self):
+            """Handle the actions: plan, answer, approve, deny and undo. Errors are returned as
+            JSON, never crash the server.
+            """
             path = urlparse(self.path).path
             body = self._body()
             try:
@@ -382,6 +432,9 @@ def make_handler(ws: Workspace):
 
 def serve(port: int = DEFAULT_PORT, *, open_browser: bool = True,
           pipeline: MaestroPipeline | None = None) -> int:
+    """Start the local web workspace on 127.0.0.1 (this machine only), optionally open the browser,
+    and run until Ctrl+C.
+    """
     ws = Workspace(pipeline)
     httpd = ThreadingHTTPServer((HOST, port), make_handler(ws))
     url = f"http://{HOST}:{httpd.server_address[1]}/"

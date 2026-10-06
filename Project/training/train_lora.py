@@ -66,6 +66,7 @@ DEFAULTS = {
 
 
 def load_config(path: Path) -> dict:
+    """Read the LoRA training settings from the config file, on top of the defaults."""
     cfg = dict(DEFAULTS)
     if not path.exists():
         return cfg
@@ -104,6 +105,9 @@ def load_config(path: Path) -> dict:
 
 
 def check_environment() -> tuple[bool, list[str]]:
+    """Check the libraries and GPU needed for fine-tuning are present, with notes on anything
+    missing.
+    """
     notes: list[str] = []
     ok = True
 
@@ -148,6 +152,7 @@ def check_environment() -> tuple[bool, list[str]]:
 
 
 def train(cfg: dict) -> int:
+    """LoRA fine-tune the base model on the prepared data and save the adapter."""
     from datasets import load_dataset
     from peft import LoraConfig
     from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
@@ -237,6 +242,7 @@ def train(cfg: dict) -> int:
 
 
 def main() -> int:
+    """Command line: check the environment, or run LoRA fine-tuning."""
     ap = argparse.ArgumentParser(description="LoRA fine-tune the MAESTRO planner")
     ap.add_argument("--check", action="store_true", help="environment report only")
     ap.add_argument("--config", default=str(CONFIG))

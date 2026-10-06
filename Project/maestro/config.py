@@ -20,6 +20,7 @@ from pathlib import Path
 
 
 def _env_path(name: str, default: str) -> Path:
+    """Read a folder path from an environment variable, or use the default; ~ is expanded."""
     return Path(os.environ.get(name, default)).expanduser()
 
 
@@ -45,18 +46,22 @@ class Settings:
 
     @property
     def audit_db(self) -> Path:
+        """Location of the hash-chained audit log database."""
         return self.home / "audit.db"
 
     @property
     def episodes_db(self) -> Path:
+        """Location of the episode history and learned-preferences database."""
         return self.home / "episodes.db"
 
     @property
     def cache_db(self) -> Path:
+        """Location of the model-response cache."""
         return self.home / "llm_cache.db"
 
     @property
     def vector_dir(self) -> Path:
+        """Location of the example store used to find similar past tasks."""
         return self.home / "vectors"
 
     @property
@@ -68,6 +73,7 @@ class Settings:
         return Path(__file__).resolve().parent.parent / "models" / "intent" / "intent_clf.joblib"
 
     def ensure_dirs(self) -> Settings:
+        """Create MAESTRO's state folder and workspace if they do not exist yet."""
         self.home.mkdir(parents=True, exist_ok=True)
         self.workspace.mkdir(parents=True, exist_ok=True)
         return self

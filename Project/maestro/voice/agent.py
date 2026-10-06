@@ -104,6 +104,9 @@ class VoiceAgent:
         show: Callable[[str], None] = print,
         typed_input: Callable[[str], str] = input,
     ):
+        """Set up the voice agent with its ears (input), mouth (speech output), optional wake word,
+        and a pipeline whose consent questions are asked by voice.
+        """
         self.ears = ears
         self.mouth = mouth
         self.wake_word = wake_word
@@ -118,18 +121,24 @@ class VoiceAgent:
     # ------------------------------------------------------------ talking --
 
     def speak(self, text: str) -> None:
+        """Print a reply and say it aloud."""
         self.show(f"maestro: {text}")
         self.mouth.say(text)
 
     def hear(self) -> Heard | None:
+        """Wait for the next thing the user says (or types)."""
         return self.ears.listen()
 
     def _unclear(self, heard: Heard) -> bool:
+        """True if speech recognition was not confident enough to act on."""
         return heard.source == "voice" and heard.confidence < self.min_confidence
 
     # --------------------------------------------------------------- loop --
 
     def run(self) -> int:
+        """The main loop: greet the user, then listen and handle each request until they say
+        goodbye or input ends.
+        """
         self.speak(WAKE_GREETING.format(wake=self.wake_word.capitalize())
                    if self.wake_word else GREETING)
         try:
@@ -180,6 +189,9 @@ class VoiceAgent:
         return True
 
     def act(self, text: str) -> Turn:
+        """Run one request through MAESTRO, asking any clarifying questions aloud. Gives up
+        (cancels) after too many unclear answers.
+        """
         turn = self.pipe.handle(text)
         repeats = 0
         while turn.status == "clarified":
@@ -214,6 +226,10 @@ class VoiceAgent:
     # ------------------------------------------------------------ consent --
 
     def _consent(self, req: ConsentRequest) -> Approval:
+        """Ask for approval: show the full preview on screen. A high-risk plan needs the
+        confirmation word typed (a spoken yes is not accepted); a lower-risk plan accepts a
+        spoken or typed yes.
+        """
         self.show("")
         self.show(render_preview(req.plan, req.verdict, req.manifests))
         self.show("")
@@ -249,6 +265,9 @@ class VoiceAgent:
 
     @staticmethod
     def _spoken_preview(req: ConsentRequest) -> str:
+        """A short spoken summary of a plan for the approval question: its risk, step count and
+        first two steps.
+        """
         n = len(req.plan.actions)
         steps = [m.summary for m in req.manifests if m.summary][:2]
         more = f" and {n - len(steps)} more step" + ("s" if n - len(steps) > 1 else "") \

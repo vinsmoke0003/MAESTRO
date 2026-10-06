@@ -78,15 +78,22 @@ class FoundEvent:
     evidence: str              # the text the date was found in, for the preview
 
     def as_dict(self) -> dict:
+        """The event as a plain dict, so it can pass between plan steps."""
         return asdict(self)
 
     def describe(self) -> str:
+        """One readable line for the preview, e.g. 'Mid-term exam — Tue 6 Oct 2026, 10:00 AM (from
+        Exam Cell)'.
+        """
         when = _human_when(self.start, self.all_day)
         who = self.source_from.split("<")[0].strip(' "') or self.source_from
         return f"{self.title} — {when}   (from {who})"
 
 
 def find_events(mails: list[dict], now: datetime | None = None) -> list[FoundEvent]:
+    """Find upcoming dated events in a list of emails: booking data first, text rules otherwise. At
+    most 3 per email and 12 in total, sorted by date, duplicates removed.
+    """
     now = now or datetime.now().astimezone()
     out: list[FoundEvent] = []
     seen: set[tuple] = set()
@@ -107,6 +114,9 @@ def find_events(mails: list[dict], now: datetime | None = None) -> list[FoundEve
 
 
 def _structured(mail: dict, now: datetime) -> list[FoundEvent]:
+    """Read flight, train, bus and event bookings from the schema.org data airlines and booking
+    sites embed in their emails.
+    """
     out = []
     for item in mail.get("structured", []) or []:
         kind = str(item.get("@type", ""))
@@ -149,6 +159,9 @@ def _structured(mail: dict, now: datetime) -> list[FoundEvent]:
 
 
 def _parse_iso(s) -> datetime | None:
+    """Parse an ISO date-time, assuming local time when no time zone is given; None if it cannot be
+    read.
+    """
     if not s:
         return None
     try:
@@ -164,6 +177,9 @@ def _parse_iso(s) -> datetime | None:
 
 
 def _from_text(mail: dict, now: datetime) -> list[FoundEvent]:
+    """Find events in the email text: a date (and time, if near it) close to a keyword that says
+    what it is (exam, flight, train, deadline...). Past dates are skipped.
+    """
     subject = mail.get("subject", "") or ""
     body = mail.get("body", "") or ""
     text = f"{subject}\n{body}"
@@ -209,6 +225,7 @@ def _category(text: str) -> str | None:
 
 
 def _title(cat: str, subject: str, pnr: str | None) -> str:
+    """Build the event title from the category and email subject, adding the PNR for tickets."""
     subj = re.sub(r"^\s*(re|fwd?|fw)\s*:\s*", "", subject, flags=re.I).strip()
     base = subj if subj and cat.lower() in subj.lower() else f"{cat}: {subj or 'from email'}"
     if pnr and pnr in base:
@@ -217,6 +234,7 @@ def _title(cat: str, subject: str, pnr: str | None) -> str:
 
 
 def _sent_date(header: str, now: datetime) -> date:
+    """The date the email was sent, used to resolve 'tomorrow' and dates with no year."""
     try:
         return parsedate_to_datetime(header).astimezone().date()
     except (TypeError, ValueError, IndexError):
@@ -239,6 +257,9 @@ def _dates(text: str, sent: date):
 
 
 def _to_date(kind: str, m: re.Match, sent: date) -> date | None:
+    """Turn one matched date pattern into a real date, choosing the next occurrence when no year is
+    written.
+    """
     try:
         if kind == "dmy_name":
             day, mon, year = int(m.group(1)), MONTHS[m.group(2)[:3].lower()], m.group(3)
@@ -283,6 +304,7 @@ def _time_near(text: str, start: int, end: int):
 
 
 def _human_when(start: str, all_day: bool) -> str:
+    """Format a start time for people, e.g. 'Tue 06 Oct 2026, 10:00 AM' or '(all day)'."""
     if all_day:
         d = date.fromisoformat(start[:10])
         return d.strftime("%a %d %b %Y") + " (all day)"
@@ -291,6 +313,7 @@ def _human_when(start: str, all_day: bool) -> str:
 
 
 def _clip(s: str, n: int = 100) -> str:
+    """Collapse whitespace and shorten text to n characters."""
     s = re.sub(r"\s+", " ", s or "").strip()
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 

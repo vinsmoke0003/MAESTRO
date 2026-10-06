@@ -13,6 +13,9 @@ from maestro.executor.base import NotAvailable
 
 
 def read_metric(metric: str, path: str = "~") -> dict:
+    """Read the metrics that work everywhere (disk, os, cpu, time); anything else raises
+    NotAvailable.
+    """
     target = Path(path).expanduser()
     if metric == "disk":
         usage = shutil.disk_usage(target if target.exists() else Path.home())
@@ -34,8 +37,10 @@ def read_metric(metric: str, path: str = "~") -> dict:
 
 
 def get_volume() -> int:
+    """Not supported here: raises NotAvailable."""
     raise NotAvailable("volume control is not implemented on this platform")
 
 
 def set_volume(level: int) -> None:
+    """Not supported here: raises NotAvailable."""
     raise NotAvailable("volume control is not implemented on this platform")

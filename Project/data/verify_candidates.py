@@ -56,6 +56,7 @@ DOUBLE = GEN / "double_annotation.jsonl"
 
 
 def read(path: Path) -> list[dict]:
+    """Read a JSON-lines file ([] if it does not exist)."""
     if not path.exists():
         return []
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()
@@ -63,12 +64,14 @@ def read(path: Path) -> list[dict]:
 
 
 def append(path: Path, row: dict) -> None:
+    """Add one row to a JSON-lines file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def render(row: dict, i: int, n: int) -> str:
+    """Show one candidate for review: the instruction, intent, slots and planned verbs."""
     plan = row.get("plan") or {}
     verbs = " -> ".join(a["verb"] for a in plan.get("actions", [])) or "(no plan)"
     slots = ", ".join(f"{k}={v}" for k, v in (row.get("slots") or {}).items()
@@ -93,6 +96,9 @@ PROMPT = "[a]ccept  [i]ntent-wrong  [r]eject  [b]lock-it  [s]kip  [q]uit > "
 
 
 def review(annotator: str, limit: int | None) -> int:
+    """Interactive review: show each unreviewed candidate and record accept / reject / skip with
+    the annotator's name.
+    """
     candidates = read(CANDIDATES)
     if not candidates:
         print(f"no candidates at {CANDIDATES}")
@@ -179,6 +185,7 @@ def review(annotator: str, limit: int | None) -> int:
 
 
 def stats() -> int:
+    """Print how many candidates were reviewed, accepted and rejected."""
     cands, acc, rej = read(CANDIDATES), read(ACCEPTED), read(REJECTED)
     reviewed = len(acc) + len(rej)
     print(f"candidates  {len(cands)}")
@@ -204,6 +211,9 @@ def stats() -> int:
 
 
 def kappa_note() -> None:
+    """Report agreement between two annotators (Cohen's kappa) on the double-annotated sample, if
+    there is one.
+    """
     rows = read(DOUBLE)
     if not rows:
         print("\nno double-annotation sample yet "
@@ -224,6 +234,7 @@ def kappa_note() -> None:
 
 
 def _fp(row: dict) -> str:
+    """A row's plan as its verb sequence, used to compare annotators."""
     plan = row.get("plan") or {}
     return "|".join(a["verb"] for a in plan.get("actions", [])) or "NONE"
 
@@ -242,6 +253,7 @@ def cohens_kappa(a: list[str], b: list[str]) -> float:
 
 
 def mark_double(n: int) -> int:
+    """Pick n rows for a second annotator to review independently."""
     cands = read(ACCEPTED) or read(CANDIDATES)
     if not cands:
         print("nothing to sample yet")
@@ -259,6 +271,7 @@ def mark_double(n: int) -> int:
 
 
 def main() -> int:
+    """Command line: review candidates, show statistics, or set up double annotation."""
     ap = argparse.ArgumentParser(description="human verification of LLM candidates")
     ap.add_argument("--annotator", default="annotator_1")
     ap.add_argument("--limit", type=int, default=None)

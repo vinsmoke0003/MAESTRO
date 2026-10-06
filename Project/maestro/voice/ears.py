@@ -50,6 +50,7 @@ class Heard:
 
     @property
     def empty(self) -> bool:
+        """True if nothing was said."""
         return not self.text.strip()
 
 
@@ -66,18 +67,22 @@ class Ears(Protocol):
 
 class ScriptedEars:
     def __init__(self, lines: Iterable[str | Heard]):
+        """Tests: set the lines that will be 'heard', in order."""
         self._lines = [x if isinstance(x, Heard) else Heard(x, 1.0, "script")
                        for x in lines]
 
     def listen(self, timeout_s: float | None = None) -> Heard | None:
+        """Tests: return the next scripted line, or None when there are no more."""
         return self._lines.pop(0) if self._lines else None
 
 
 class KeyboardEars:
     def __init__(self, prompt: str = "you> "):
+        """Typed input instead of a microphone, with this prompt."""
         self.prompt = prompt
 
     def listen(self, timeout_s: float | None = None) -> Heard | None:
+        """Read one typed line; None when input is closed (Ctrl-D / Ctrl-C)."""
         try:
             return Heard(input(self.prompt), 1.0, "keyboard")
         except (EOFError, KeyboardInterrupt):
@@ -93,11 +98,16 @@ class WhisperTranscriber:
     """faster-whisper, loaded lazily so `import maestro` never pays for it."""
 
     def __init__(self, model: str | None = None, *, compute_type: str = "int8"):
+        """Choose the Whisper speech-to-text model (MAESTRO_STT_MODEL or the default). It is loaded
+        only when first needed.
+        """
         self.model_name = model or os.environ.get("MAESTRO_STT_MODEL", DEFAULT_STT_MODEL)
         self.compute_type = compute_type
         self._model = None
 
     def load(self):
+        """Load the faster-whisper model on the CPU the first time, or explain how to install it.
+        """
         if self._model is None:
             try:
                 from faster_whisper import WhisperModel
@@ -110,6 +120,7 @@ class WhisperTranscriber:
         return self._model
 
     def transcribe(self, audio) -> Heard:
+        """Turn recorded audio into English text with a rough 0-1 confidence score."""
         model = self.load()
         segments, _info = model.transcribe(
             audio, language="en", beam_size=1, vad_filter=True,
@@ -148,6 +159,10 @@ class MicEars:
                  endpointer=None, *, device: int | str | None = None, on_state=None,
                  on_level=None, on_partial=None, partial_every_s: float = 0.8,
                  push_to_talk: bool = False, wait_key=None):
+        """Set up microphone input: the transcriber, the endpointer that finds where speech starts
+        and ends, and optional callbacks for status, volume and live captions. Push-to-talk uses
+        Enter to start and stop instead.
+        """
         from maestro.voice.vad import Endpointer  # numpy: only needed for a real mic
 
         self.transcriber = transcriber or WhisperTranscriber()
@@ -165,6 +180,7 @@ class MicEars:
 
     @staticmethod
     def _sd():
+        """Import the sounddevice microphone library, or explain how to install it."""
         try:
             import sounddevice as sd
         except (ImportError, OSError) as e:
@@ -187,6 +203,9 @@ class MicEars:
         self.transcriber.load()
 
     def _pool(self):
+        """A single background worker for transcription, so live captions and the final transcript
+        never run at the same time.
+        """
         # One worker: Whisper runs one job at a time, and the final transcript
         # queues behind any caption still in flight instead of racing it.
         if self._worker is None:
@@ -223,9 +242,13 @@ class MicEars:
         failed: list[BaseException] = []
 
         def callback(indata, _n, _time, status):  # runs on the audio thread
+            """Called by the audio driver for each block of samples; queues the first channel."""
             q.put(indata[:, 0].copy())
 
         def run() -> None:
+            """Keep the microphone stream open until told to stop; any error is passed back to the
+            caller.
+            """
             try:
                 with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
                                     blocksize=FRAME_SAMPLES, device=self.device,
@@ -268,6 +291,7 @@ class MicEars:
         done = threading.Event()
 
         def wait_for_enter() -> None:
+            """Wait for the user to press Enter to finish recording."""
             try:
                 self.wait_key("")
             except (EOFError, KeyboardInterrupt):
@@ -342,6 +366,7 @@ class MicEars:
         return None
 
     def _caption(self, audio) -> None:
+        """Transcribe the audio so far and show it as a live caption; errors are ignored."""
         try:
             text = self.transcriber.transcribe(audio).text
         except Exception:
@@ -350,6 +375,7 @@ class MicEars:
             self.on_partial(text)
 
     def listen(self, timeout_s: float | None = None) -> Heard | None:
+        """Record one utterance and return its transcript (empty if nothing was said)."""
         audio = self.record(timeout_s)
         if audio is None:
             return Heard("", 0.0)

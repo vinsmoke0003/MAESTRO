@@ -272,6 +272,9 @@ class RuleIntentClassifier:
     name: str = "rules"
 
     def predict(self, text: str) -> IntentPrediction:
+        """Guess the intent with keyword rules (the baseline and the fallback when the trained
+        model is absent). The unsafe-request prefilter always runs first.
+        """
         pre = safety_prefilter(text)
         if pre:
             return IntentPrediction(pre[0], 0.99, {pre[0]: 0.99}, "rules:prefilter")
@@ -334,6 +337,7 @@ class SklearnIntentClassifier:
     """TF-IDF -> calibrated LinearSVC. Loaded from a joblib artifact."""
 
     def __init__(self, pipeline, labels: list[str], meta: dict | None = None):
+        """Wrap a trained scikit-learn pipeline and its list of intent labels."""
         self._pipe = pipeline
         self._labels = labels
         self.meta = meta or {}
@@ -365,12 +369,14 @@ class SklearnIntentClassifier:
 
     @classmethod
     def load(cls, path: str | Path) -> SklearnIntentClassifier:
+        """Load the trained intent model from a .joblib file."""
         import joblib
 
         blob = joblib.load(Path(path))
         return cls(blob["pipeline"], blob["labels"], blob.get("meta", {}))
 
     def save(self, path: str | Path) -> None:
+        """Save the trained model, its labels and training details to a .joblib file."""
         import joblib
 
         p = Path(path)
@@ -380,6 +386,10 @@ class SklearnIntentClassifier:
     # -- inference ---------------------------------------------------------
 
     def predict(self, text: str) -> IntentPrediction:
+        """Predict the intent with the trained model, after the prefilter. If the model alone (not
+        the prefilter) predicts a refusal, its confidence is capped so MAESTRO asks a question
+        instead of refusing.
+        """
         pre = safety_prefilter(text)
         if pre:
             return IntentPrediction(pre[0], 0.99, {pre[0]: 0.99}, "sklearn:prefilter")
@@ -405,6 +415,7 @@ class SklearnIntentClassifier:
         return IntentPrediction(best, confidence, scores, "sklearn")
 
     def predict_batch(self, texts: list[str]) -> list[IntentPrediction]:
+        """Predict the intent of several sentences."""
         return [self.predict(t) for t in texts]
 
 

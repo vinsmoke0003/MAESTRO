@@ -68,10 +68,15 @@ class Planner:
 
     @property
     def model(self) -> str:
+        """The name of the model the LLM planner uses."""
         return getattr(self.client, "model", "unknown")
 
     def plan(self, instruction: str, intent: str | None = None,
              slots: Slots | None = None) -> Plan:
+        """Ask the local model for a plan using constrained JSON output. If the result fails
+        validation, the error is fed back and the model tries again, at most MAX_ATTEMPTS times;
+        then it fails cleanly instead of guessing.
+        """
         system = prompts.system_prompt()
         user = prompts.user_prompt(instruction, intent, slots, self.home, self.exemplars)
         schema = prompts.decode_schema()
@@ -107,6 +112,9 @@ class Planner:
     # -- internals ---------------------------------------------------------
 
     def _build(self, instruction: str, raw: str) -> Plan:
+        """Turn the model's JSON into a validated Plan. The plan id and the instruction are set by
+        MAESTRO, never by the model, and every verb is re-checked against the registry.
+        """
         data = json.loads(_strip_fences(raw))
         plan = Plan.model_validate({
             "plan_id": f"p_{uuid.uuid4().hex[:8]}",
@@ -160,10 +168,14 @@ class HybridPlanner:
 
     @property
     def model(self) -> str:
+        """Which planner produced plans: the model's name, or 'rule-based'."""
         return self.llm.model if self.llm else "rule-based"
 
     def plan(self, instruction: str, intent: str | None = None,
              slots: Slots | None = None) -> Plan:
+        """Try the LLM planner first; if there is no model or it fails, fall back to the
+        deterministic template planner. Records which one was used.
+        """
         self.last_fallback_reason = ""
         if self.llm is not None:
             try:

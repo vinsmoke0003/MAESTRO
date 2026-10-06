@@ -13,14 +13,17 @@ from maestro.executor.base import NotAvailable
 
 
 def _engine() -> str | None:
+    """Path to espeak-ng or espeak, or None."""
     return shutil.which("espeak-ng") or shutil.which("espeak")
 
 
 def available() -> bool:
+    """True if a speech engine is installed."""
     return _engine() is not None
 
 
 def speak(text: str, rate: int | None = None) -> None:
+    """Say the text with espeak, sending it on standard input."""
     exe = _engine()
     if exe is None:
         raise NotAvailable("no speech engine found (install espeak-ng)")

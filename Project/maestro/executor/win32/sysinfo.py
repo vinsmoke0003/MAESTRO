@@ -18,6 +18,9 @@ from maestro.executor.base import NotAvailable
 
 
 def read_metric(metric: str, path: str = "~") -> dict:
+    """Read one system metric on Windows (disk, memory, battery, os, cpu, time, volume or network)
+    and return it as a small dict.
+    """
     target = Path(path).expanduser()
     if metric == "disk":
         usage = shutil.disk_usage(target if target.exists() else Path.home())
@@ -75,6 +78,8 @@ def read_metric(metric: str, path: str = "~") -> dict:
 
 
 def _endpoint():
+    """Get the Windows master-volume control through pycaw; NotAvailable if pycaw is not installed.
+    """
     try:
         from ctypes import POINTER, cast  # noqa: PLC0415
 
@@ -90,10 +95,12 @@ def _endpoint():
 
 
 def get_volume() -> int:
+    """Current master volume, 0-100."""
     vol = _endpoint()
     return int(round(vol.GetMasterVolumeLevelScalar() * 100))
 
 
 def set_volume(level: int) -> None:
+    """Set the master volume, clamped to 0-100."""
     vol = _endpoint()
     vol.SetMasterVolumeLevelScalar(max(0, min(100, int(level))) / 100.0, None)

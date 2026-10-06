@@ -50,6 +50,9 @@ class LaunchExecutor:
     verb = "app.launch"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Describe the launch for the preview; the app may open windows of its own, so that is
+        listed as unknown.
+        """
         a = LaunchArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Launch {a.app_id}",
@@ -57,6 +60,7 @@ class LaunchExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Launch the app through the OS backend and remember it so undo can quit it."""
         a = LaunchArgs.model_validate(resolve(args, ctx))
         try:
             detail = backend("apps").launch(a.app_id)
@@ -66,6 +70,7 @@ class LaunchExecutor:
                       undo_data={"launched": a.app_id})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Quit the app that was launched (politely, not forced)."""
         d = result.undo_data or {}
         if d.get("launched"):
             try:
@@ -78,6 +83,7 @@ class QuitExecutor:
     verb = "app.quit"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Describe the quit for the preview, warning that unsaved work may be lost."""
         a = QuitArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Quit {a.app_id}",
@@ -85,6 +91,7 @@ class QuitExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Quit the app through the OS backend and remember it so undo can relaunch it."""
         a = QuitArgs.model_validate(resolve(args, ctx))
         try:
             detail = backend("apps").quit(a.app_id, force=a.force)
@@ -94,6 +101,7 @@ class QuitExecutor:
                       undo_data={"quit": a.app_id})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Relaunch the app that was quit."""
         d = result.undo_data or {}
         if d.get("quit"):
             try:

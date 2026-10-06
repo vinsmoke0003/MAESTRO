@@ -46,6 +46,7 @@ SOURCES = {"human", "template", "paraphrase", "adversarial", "llm_generated",
 
 
 def load(name: str) -> list[dict]:
+    """Read one split (train / val / test) of the dataset."""
     p = DATA / "splits" / f"{name}.jsonl"
     if not p.exists():
         return []
@@ -53,6 +54,7 @@ def load(name: str) -> list[dict]:
 
 
 def check_row_shape(r: dict, errors: list[str]) -> None:
+    """Check a row has every required field with an allowed value."""
     rid = r.get("id", "?")
     for key in ("id", "instruction", "paraphrase_group", "expected_behavior",
                 "difficulty", "source"):
@@ -74,6 +76,9 @@ def check_row_shape(r: dict, errors: list[str]) -> None:
 
 
 def check_plan(r: dict, policy: PathPolicy, errors: list[str]) -> None:
+    """Check a row's gold plan parses as a valid Plan and that the safety scorer agrees with its
+    expected behaviour.
+    """
     plan_json = r.get("plan")
     rid = r["id"]
     if plan_json is None:
@@ -112,6 +117,9 @@ def check_plan(r: dict, policy: PathPolicy, errors: list[str]) -> None:
 
 
 def validate() -> tuple[list[str], dict]:
+    """Check every split, and that no paraphrase group appears in more than one split. Returns the
+    errors and a summary.
+    """
     errors: list[str] = []
     policy = PathPolicy()
     splits = {name: load(name) for name in ("train", "val", "test")}
@@ -165,6 +173,7 @@ def validate() -> tuple[list[str], dict]:
 
 
 def main() -> int:
+    """Command line: validate the dataset and exit with an error if anything is wrong."""
     errors, summary = validate()
     print("DeskPlan validation")
     for k, v in summary.items():

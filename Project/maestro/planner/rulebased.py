@@ -75,12 +75,14 @@ class _B:
     actions: list[Action]
 
     def __init__(self) -> None:
+        """Start an empty plan."""
         self.actions = []
 
     def add(self, verb: str, args: dict, *, produces: str | None = None,
             depends_on: list[str] | None = None, rationale: str = "",
             risk_hint: Risk | None = None, undo: UndoSpec | None = None,
             pre: list[Check] | None = None, post: list[Check] | None = None) -> str:
+        """Append one action with an automatic id (a1, a2, ...) and return that id."""
         aid = f"a{len(self.actions) + 1}"
         self.actions.append(Action(
             action_id=aid, verb=verb, args=args, produces=produces,
@@ -91,6 +93,7 @@ class _B:
 
 
 def _pattern(slots: Slots) -> str:
+    """The file pattern to match: the exact file name, '*.type', or '*' for everything."""
     if slots.file_name:
         return slots.file_name
     if slots.file_type:
@@ -99,6 +102,7 @@ def _pattern(slots: Slots) -> str:
 
 
 def _abs(p: str | None) -> str | None:
+    """Expand a ~ path to an absolute one (None stays None)."""
     return resolve_path(p) if p else None
 
 
@@ -427,11 +431,13 @@ def _google_actions(intent: str, slots: Slots, conv) -> list[Action] | None:
 
 
 def _drive_kind(slots: Slots) -> str | None:
+    """Map a file-type slot to the Drive kind used in searches."""
     return {"pdf": "pdf", "docx": "document", "xlsx": "spreadsheet",
             "pptx": "presentation", "zip": "zip"}.get(slots.file_type or "")
 
 
 def _draft_body(subject: str, slots: Slots) -> str:
+    """The text of a draft MAESTRO writes, clearly stating it has not been sent."""
     lines = [f"Draft prepared by MAESTRO about: {subject}.", ""]
     if slots.source:
         lines.append(f"Relevant folder: {slots.source}")
@@ -442,6 +448,7 @@ def _draft_body(subject: str, slots: Slots) -> str:
 
 def build_plan(instruction: str, intent: str, slots: Slots, *,
                absolute: bool = True, plan_id: str | None = None) -> Plan:
+    """Build a complete Plan for an intent from the templates, with a fresh id."""
     actions = build_actions(intent, slots, absolute=absolute)
     return Plan(
         plan_id=plan_id or f"p_{uuid.uuid4().hex[:8]}",
@@ -458,4 +465,5 @@ class RulePlanner:
     model = "rule-based"
 
     def plan(self, instruction: str, intent: str, slots: Slots) -> Plan:
+        """Plan with the templates only (no model)."""
         return build_plan(instruction, intent, slots)

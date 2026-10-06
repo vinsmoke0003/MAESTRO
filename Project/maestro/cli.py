@@ -58,6 +58,9 @@ def _utf8_stdout() -> None:
 
 
 def _ask_consent(req: ConsentRequest) -> Approval:
+    """Ask for approval in the terminal: show the full preview, then ask yes/no (or 'always' for
+    this exact plan). A high-risk plan needs the confirmation word typed exactly.
+    """
     print()
     print(render_preview(req.plan, req.verdict, req.manifests))
     print()
@@ -77,6 +80,9 @@ def _ask_consent(req: ConsentRequest) -> Approval:
 
 
 def _pipeline(args: argparse.Namespace) -> MaestroPipeline:
+    """Build the pipeline for a terminal command, with consent asked in the terminal and any
+    ablation switches applied.
+    """
     return MaestroPipeline(
         gate=ConsentGate(ask=_ask_consent),
         enable_safety=not getattr(args, "no_safety", False),
@@ -92,6 +98,9 @@ def _pipeline(args: argparse.Namespace) -> MaestroPipeline:
 
 
 def cmd_ask(args: argparse.Namespace) -> int:
+    """`maestro ask "..."`: run one instruction, asking clarifying questions in the terminal until
+    it is complete, then print the result (and step details with -v).
+    """
     instruction = " ".join(args.instruction).strip()
     if not instruction:
         print("nothing to do — give me an instruction")
@@ -225,13 +234,16 @@ class _LiveLine:
     WIDTH = 78
 
     def __init__(self) -> None:
+        """Start in the not-speaking state."""
         self.speaking = False
 
     def _write(self, text: str) -> None:
+        """Rewrite the current terminal line in place."""
         sys.stdout.write("\r" + text[: self.WIDTH].ljust(self.WIDTH))
         sys.stdout.flush()
 
     def state(self, s: str) -> None:
+        """Show the listening / hearing / transcribing status."""
         if s == "listening":
             self.speaking = False
             print("  [listening - speak now]", flush=True)
@@ -247,6 +259,9 @@ class _LiveLine:
             sys.stdout.flush()
 
     def level(self, level: float, threshold: float, speaking: bool) -> None:
+        """Draw a microphone level meter, with where speech starts, while waiting for the user to
+        talk.
+        """
         if speaking:
             return                      # the caption owns the line while you talk
         bars = min(20, int(20 * level / max(threshold * 1.5, 1e-6)))
@@ -255,11 +270,13 @@ class _LiveLine:
                     f"level {level:.4f}  (speech at {threshold:.4f})")
 
     def caption(self, text: str) -> None:
+        """Show the words heard so far while the user is still speaking."""
         if self.speaking:
             self._write(f"  ... {text}")
 
 
 def _chain(first, rest):
+    """Yield one item, then everything from an iterator (used to put a peeked item back)."""
     yield first
     yield from rest
 
@@ -469,6 +486,9 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 
 def cmd_summarize(args: argparse.Namespace) -> int:
+    """`maestro summarize FILE`: summarise a file as untrusted text and say if injection markers
+    were found.
+    """
     pipe = _pipeline(args)
     text, detected = pipe.summarize_file(args.path)
     print(text)
@@ -552,6 +572,9 @@ def cmd_undo(args: argparse.Namespace) -> int:
 
 
 def cmd_verbs(args: argparse.Namespace) -> int:
+    """`maestro verbs`: list every verb in the closed registry with its risk, reversibility and
+    description (or as JSON).
+    """
     if args.json:
         print(json.dumps(registry.snapshot(), indent=2))
         return 0
@@ -570,6 +593,9 @@ def cmd_verbs(args: argparse.Namespace) -> int:
 
 
 def cmd_audit(args: argparse.Namespace) -> int:
+    """`maestro audit`: check the audit log's hash chain (and show the last rows); reports
+    tampering if the chain is broken.
+    """
     from maestro.safety import AuditLog
 
     log = AuditLog(settings().audit_db)
@@ -586,6 +612,9 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
 
 def cmd_episodes(args: argparse.Namespace) -> int:
+    """`maestro episodes`: show how many episodes ended in each status and intent, and optionally
+    the latest ones.
+    """
     from maestro.memory import EpisodeStore
 
     store = EpisodeStore(settings().episodes_db)
@@ -607,6 +636,9 @@ def cmd_episodes(args: argparse.Namespace) -> int:
 
 
 def cmd_learn(args: argparse.Namespace) -> int:
+    """`maestro learn`: export past episodes as training candidates. None is used for training
+    until a person marks it verified.
+    """
     from maestro.memory import EpisodeStore
 
     store = EpisodeStore(settings().episodes_db)
@@ -624,6 +656,9 @@ def cmd_learn(args: argparse.Namespace) -> int:
 
 
 def cmd_prefs(args: argparse.Namespace) -> int:
+    """`maestro prefs`: show learned preferences, or set (--set key=value) / forget (--forget key)
+    one.
+    """
     from maestro.memory import PreferenceStore
 
     store = PreferenceStore(settings().episodes_db)
@@ -685,6 +720,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     rows: list[tuple[str, str, str]] = []   # (status, feature, detail)
 
     def probe(feature: str, fn) -> None:
+        """Run one feature check and record READY or MISSING; a crashing check counts as MISSING.
+        """
         try:
             ok, detail = fn()
         except Exception as e:  # a probe must never crash doctor
@@ -693,6 +730,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- core: the safety layer needs exactly these two ----------------------
     def _core():
+        """Check: the core libraries for the safety layer and file verbs are installed."""
         importlib.import_module("pydantic")
         importlib.import_module("send2trash")
         return True, "pydantic + send2trash present; safety layer and file verbs work"
@@ -700,6 +738,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- trash actually works here -------------------------------------------
     def _trash():
+        """Check: sending a probe file to the Recycle Bin / Trash really works here."""
         import tempfile
 
         from send2trash import send2trash
@@ -712,6 +751,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- intent model artifact ------------------------------------------------
     def _intent():
+        """Check: the trained intent model loads and classifies a sample sentence correctly."""
         if cfg.intent_model.exists():
             from maestro.nlp import load_classifier
             clf = load_classifier()
@@ -724,6 +764,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- LLM planner ------------------------------------------------------------
     def _llm():
+        """Check: whether a local or cloud model is reachable for planning."""
         b = router.pick(cfg, cache=False)
         return b.available, (f"{b.name}: {b.model} — {b.note}" if b.available
                              else "no LLM reachable; the deterministic planner is used")
@@ -731,6 +772,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- browser: the BINARY, not the package ---------------------------------
     def _browser():
+        """Check: Playwright can actually launch headless Chromium."""
         importlib.import_module("playwright")
         from playwright.sync_api import sync_playwright
         with sync_playwright() as pw:
@@ -746,6 +788,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- desktop apps: resolvable on THIS machine -----------------------------
     def _apps():
+        """Check: which common desktop apps can be launched on this machine."""
         from maestro.executor.platform import backend
         mod = backend("apps")
         found, missing = [], []
@@ -764,6 +807,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- system metrics ---------------------------------------------------------
     def _metrics():
+        """Check: which system metrics (disk, memory, battery, cpu, os, time) can be read."""
         from maestro.executor.platform import backend
         mod = backend("sysinfo")
         good, bad = [], []
@@ -778,6 +822,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     probe("sys.info metrics", _metrics)
 
     def _volume():
+        """Check: the output volume can be read."""
         from maestro.executor.platform import backend
         level = backend("sysinfo").get_volume()
         return True, f"current output volume {level}% (pycaw/osascript working)"
@@ -785,6 +830,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- semantic memory --------------------------------------------------------
     def _memory():
+        """Check: which example store is used (ChromaDB or the built-in hashing store)."""
         try:
             importlib.import_module("chromadb")
             return True, "chromadb present — real embeddings for exemplar retrieval"
@@ -794,6 +840,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- voice: a microphone, a local speech model, and an OS voice ------------
     def _voice_in():
+        """Check: a microphone and the local Whisper speech model are available."""
         from maestro.voice import MicEars, VoiceUnavailable
 
         try:
@@ -808,6 +855,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     probe("voice input (maestro voice)", _voice_in)
 
     def _voice_out():
+        """Check: a system text-to-speech voice is available."""
         from maestro.executor.platform import backend
 
         if backend("speech").available():
@@ -816,6 +864,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     probe("voice output", _voice_out)
 
     def _google():
+        """Check: the Google libraries are installed, the OAuth client file exists and the user is
+        signed in.
+        """
         from maestro.google import auth
 
         try:
@@ -852,6 +903,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Define every `maestro` sub-command and its options."""
     p = argparse.ArgumentParser(
         prog="maestro",
         description="MAESTRO — safe natural-language desktop task automation",
@@ -860,6 +912,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     def ablations(sp):
+        """Add the --no-safety / --no-dry-run / --no-critic / --no-memory switches used in the
+        ablation study.
+        """
         sp.add_argument("--no-safety", action="store_true",
                         help="ablation A1: disable the safety layer (research use)")
         sp.add_argument("--no-dry-run", action="store_true",
@@ -963,6 +1018,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entry point of the `maestro` command: parse the arguments and run the chosen sub-command.
+    Ctrl+C stops cleanly.
+    """
     _utf8_stdout()
     args = build_parser().parse_args(argv)
     try:

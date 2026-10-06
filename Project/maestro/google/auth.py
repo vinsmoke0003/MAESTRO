@@ -48,6 +48,9 @@ class GoogleNotConnected(RuntimeError):
 
 
 def google_dir() -> Path:
+    """The folder where MAESTRO keeps the Google client file and token (~/.maestro/google), created
+    if needed.
+    """
     d = settings().home / "google"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -60,10 +63,12 @@ def client_secret_path() -> Path:
 
 
 def token_path() -> Path:
+    """Where the sign-in token is stored."""
     return google_dir() / "token.json"
 
 
 def _libs():
+    """Import Google's sign-in libraries, or explain how to install them."""
     try:
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
@@ -76,6 +81,7 @@ def _libs():
 
 
 def _save(creds) -> None:
+    """Write the token to disk, readable only by the current user."""
     p = token_path()
     p.write_text(creds.to_json(), encoding="utf-8")
     try:

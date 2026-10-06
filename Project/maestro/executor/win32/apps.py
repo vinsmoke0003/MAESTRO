@@ -36,6 +36,9 @@ KNOWN_APPS: dict[str, tuple[str, str]] = {
 
 
 def _resolve(app_id: str) -> tuple[str, str]:
+    """Map a friendly app name to its Windows executable and process name; a bare .exe on PATH is
+    also accepted.
+    """
     key = app_id.strip().lower()
     if key in KNOWN_APPS:
         return KNOWN_APPS[key]
@@ -118,6 +121,7 @@ def _from_app_paths(exe: str) -> str | None:
 
 
 def launch(app_id: str) -> str:
+    """Start an application from its full path, without a shell."""
     exe, _ = _resolve(app_id)
     path = _find_executable(exe)
     if path is None:
@@ -130,6 +134,7 @@ def launch(app_id: str) -> str:
 
 
 def quit(app_id: str, force: bool = False) -> str:  # noqa: A001 - mirrors the verb name
+    """Close an application with taskkill (add /F to force)."""
     _, image = _resolve(app_id)
     cmd = ["taskkill", "/IM", image]
     if force:

@@ -21,14 +21,19 @@ _SCRIPT = (
 
 
 def _powershell() -> str | None:
+    """Path to PowerShell (Windows PowerShell or pwsh), or None."""
     return shutil.which("powershell") or shutil.which("pwsh")
 
 
 def available() -> bool:
+    """True if PowerShell exists, which means the built-in Windows voice can be used."""
     return _powershell() is not None
 
 
 def speak(text: str, rate: int | None = None) -> None:
+    """Say the text with the Windows SAPI voice, sending it on standard input so it is data, not
+    script.
+    """
     exe = _powershell()
     if exe is None:
         raise NotAvailable("PowerShell was not found; Windows speech is unavailable")

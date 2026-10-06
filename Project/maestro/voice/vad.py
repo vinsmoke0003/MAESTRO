@@ -76,16 +76,23 @@ class Endpointer:
     _in_speech: bool = False
 
     def __post_init__(self) -> None:
+        """Create the short buffer that keeps the audio just before speech starts, so the first
+        word is not cut off.
+        """
         self._preroll = deque(maxlen=max(1, self.preroll_ms // FRAME_MS))
 
     # -- thresholds --------------------------------------------------------
 
     @property
     def calibrated(self) -> bool:
+        """True once enough room noise has been heard to know the background level."""
         return self._frames_seen * FRAME_MS >= self.calibration_ms
 
     @property
     def start_level(self) -> float:
+        """How loud a sound must be to count as the start of speech: a multiple of the room noise,
+        capped so it is always reachable.
+        """
         # Capped below full scale: in a loud room, floor x start_ratio can
         # exceed 1.0, a level no voice can reach, and the agent would never
         # hear anything. The cap keeps the threshold reachable.
@@ -95,12 +102,16 @@ class Endpointer:
 
     @property
     def stop_level(self) -> float:
+        """How quiet it must get to count as silence after speech (lower than the start level, so
+        speech is not cut off mid-sentence).
+        """
         ratio = self.noise_floor * self.stop_ratio
         halfway = self.noise_floor + 0.5 * (self.start_level - self.noise_floor)
         return max(min(ratio, halfway), self.min_level * 0.6)
 
     @property
     def in_speech(self) -> bool:
+        """True while the user is speaking."""
         return self._in_speech
 
     # -- the state machine -------------------------------------------------
@@ -117,6 +128,10 @@ class Endpointer:
         return np.concatenate(self._speech).astype(np.float32)
 
     def feed(self, frame: np.ndarray) -> np.ndarray | None:
+        """Give the endpointer one 30 ms audio frame. It first learns the room noise, then detects
+        when speech starts and ends, and returns the full utterance once the user stops talking
+        (else None).
+        """
         level = rms(frame)
         self._last_level = level
         self._frames_seen += 1
@@ -152,6 +167,9 @@ class Endpointer:
         return None
 
     def _finish(self) -> np.ndarray | None:
+        """Assemble the recorded utterance, keeping a little trailing silence; too-short sounds
+        (coughs, clicks) are dropped.
+        """
         # Trailing silence is not speech; keep a little of it so the last word
         # is not clipped, drop the rest.
         keep_tail = max(1, 200 // FRAME_MS)

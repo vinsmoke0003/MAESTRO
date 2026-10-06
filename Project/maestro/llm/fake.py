@@ -24,6 +24,7 @@ class ScriptedClient:
     calls: list[tuple[str, str, dict | None]] = field(default_factory=list)
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Tests: return the next pre-written reply and record what was asked."""
         self.calls.append((system, user, schema))
         if not self.responses:
             raise LLMError("ScriptedClient has no responses configured")
@@ -37,6 +38,7 @@ class FailingClient:
     message: str = "simulated provider outage"
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Tests: always fail, to exercise the fallback to the template planner."""
         raise LLMError(self.message)
 
 
@@ -47,4 +49,5 @@ class EchoClient:
     model: str = "echo"
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Tests: reply with the user message unchanged."""
         return user

@@ -35,17 +35,40 @@ GOOGLE_EXPORT = {           # Google Docs formats have no bytes; export them
 
 
 class GoogleAPI(Protocol):
-    def search_mail(self, query: str, limit: int) -> list[dict]: ...
-    def read_mail(self, message_id: str) -> dict: ...
-    def create_draft(self, to: list[str], subject: str, body: str) -> dict: ...
-    def delete_draft(self, draft_id: str) -> None: ...
-    def search_drive(self, name: str, limit: int, kind: str | None) -> list[dict]: ...
-    def download(self, file_id: str, dest_dir: Path) -> Path: ...
-    def upload(self, path: Path, folder_id: str | None) -> dict: ...
-    def trash_own_upload(self, file_id: str) -> None: ...
-    def calendar_find(self, source_key: str) -> list[dict]: ...
-    def calendar_add(self, event: dict) -> dict: ...
-    def calendar_delete_own(self, event_id: str) -> None: ...
+    def search_mail(self, query: str, limit: int) -> list[dict]:
+        """Return up to `limit` messages matching a Gmail search query (sender, subject, date,
+        snippet).
+        """
+
+    def read_mail(self, message_id: str) -> dict:
+        """Return one email's sender, subject, date, body text and attachment names."""
+
+    def create_draft(self, to: list[str], subject: str, body: str) -> dict:
+        """Save an unsent email in Gmail Drafts and return its draft id."""
+
+    def delete_draft(self, draft_id: str) -> None:
+        """Delete a draft MAESTRO created (used for undo)."""
+
+    def search_drive(self, name: str, limit: int, kind: str | None) -> list[dict]:
+        """Return Drive files matching a name and/or kind."""
+
+    def download(self, file_id: str, dest_dir: Path) -> Path:
+        """Download one Drive file into a folder and return the saved path."""
+
+    def upload(self, path: Path, folder_id: str | None) -> dict:
+        """Upload one local file to the user's Drive and return its id, name and link."""
+
+    def trash_own_upload(self, file_id: str) -> None:
+        """Move a file MAESTRO uploaded to the Drive trash (used for undo)."""
+
+    def calendar_find(self, source_key: str) -> list[dict]:
+        """Return calendar events MAESTRO already added for this source, to avoid duplicates."""
+
+    def calendar_add(self, event: dict) -> dict:
+        """Add one event to the user's primary calendar and return its id and link."""
+
+    def calendar_delete_own(self, event_id: str) -> None:
+        """Delete an event MAESTRO added (used for undo)."""
 
 
 _API: GoogleAPI | None = None
@@ -58,6 +81,7 @@ def set_api(api: GoogleAPI | None) -> None:
 
 
 def api() -> GoogleAPI:
+    """The Google adapter in use: the live one by default, or the fake one a test installed."""
     global _API
     if _API is None:
         _API = LiveGoogle()
@@ -85,6 +109,9 @@ def safe_filename(name: str, fallback: str = "drive-file") -> str:
 
 
 def unique_path(target: Path) -> Path:
+    """Return the path if free, otherwise 'name (1).ext', 'name (2).ext', ... so nothing is
+    overwritten.
+    """
     if not target.exists():
         return target
     for i in range(1, 1000):
@@ -117,6 +144,7 @@ def json_ld(html_text: str) -> list[dict]:
 
 
 def _html_to_text(s: str) -> str:
+    """Strip an HTML email down to plain text (drop scripts and styles, keep line breaks)."""
     s = re.sub(r"(?is)<(script|style).*?</\1>", " ", s)
     s = re.sub(r"(?i)<br\s*/?>|</p>|</div>", "\n", s)
     s = re.sub(r"<[^>]+>", " ", s)
@@ -130,10 +158,12 @@ def _html_to_text(s: str) -> str:
 
 class LiveGoogle:
     def __init__(self) -> None:
+        """Start with no Google connections; each service connects on first use."""
         self._gmail = None
         self._drive = None
 
     def _svc(self, name: str, version: str):
+        """Build a Google API client for one service using the stored sign-in."""
         try:
             from googleapiclient.discovery import build
         except ImportError as e:
@@ -143,12 +173,14 @@ class LiveGoogle:
 
     @property
     def gmail(self):
+        """The Gmail client, created on first use."""
         if self._gmail is None:
             self._gmail = self._svc("gmail", "v1")
         return self._gmail
 
     @property
     def drive(self):
+        """The Drive client, created on first use."""
         if self._drive is None:
             self._drive = self._svc("drive", "v3")
         return self._drive
@@ -156,6 +188,9 @@ class LiveGoogle:
     # -- Gmail ---------------------------------------------------------------
 
     def search_mail(self, query: str, limit: int) -> list[dict]:
+        """Run a Gmail search and fetch each match's sender, subject, date, snippet and unread
+        flag.
+        """
         res = self.gmail.users().messages().list(
             userId="me", q=query, maxResults=limit).execute()
         out = []
@@ -171,6 +206,9 @@ class LiveGoogle:
         return out
 
     def read_mail(self, message_id: str) -> dict:
+        """Fetch one email and return its headers, plain-text body (from HTML if needed),
+        attachment names and any embedded booking data.
+        """
         m = self.gmail.users().messages().get(userId="me", id=message_id,
                                               format="full").execute()
         payload = m.get("payload", {})
@@ -178,6 +216,9 @@ class LiveGoogle:
         plain, htmls, attachments = [], [], []
 
         def walk(part):
+            """Visit each part of the email, collecting plain-text and HTML bodies and attachment
+            names.
+            """
             mime = part.get("mimeType", "")
             data = part.get("body", {}).get("data")
             if part.get("filename"):
@@ -197,6 +238,8 @@ class LiveGoogle:
                 "structured": json_ld("\n".join(htmls))}
 
     def create_draft(self, to: list[str], subject: str, body: str) -> dict:
+        """Build the email and save it to Gmail Drafts (the API call is drafts.create, never send).
+        """
         msg = EmailMessage()
         msg["To"] = ", ".join(to)
         msg["Subject"] = subject
@@ -207,11 +250,15 @@ class LiveGoogle:
         return {"draft_id": d["id"], "message_id": d.get("message", {}).get("id", "")}
 
     def delete_draft(self, draft_id: str) -> None:
+        """Delete a draft by id."""
         self.gmail.users().drafts().delete(userId="me", id=draft_id).execute()
 
     # -- Drive ---------------------------------------------------------------
 
     def search_drive(self, name: str, limit: int, kind: str | None) -> list[dict]:
+        """Search Drive by name and kind, newest first, excluding trashed files. The name is
+        escaped for Drive's query language.
+        """
         q = ["trashed = false"]
         if name:
             q.append(f"name contains '{drive_quote(name)}'")
@@ -228,6 +275,9 @@ class LiveGoogle:
                  "link": f.get("webViewLink", "")} for f in res.get("files", [])]
 
     def download(self, file_id: str, dest_dir: Path) -> Path:
+        """Download one file (exporting Google Docs/Sheets/Slides as PDF) under a safe, unique file
+        name.
+        """
         from googleapiclient.http import MediaIoBaseDownload
 
         meta = self.drive.files().get(fileId=file_id, fields="name,mimeType").execute()
@@ -252,6 +302,7 @@ class LiveGoogle:
         return target
 
     def upload(self, path: Path, folder_id: str | None) -> dict:
+        """Upload one file to the user's Drive, optionally into a folder."""
         from googleapiclient.http import MediaFileUpload
 
         body = {"name": path.name}
@@ -264,6 +315,9 @@ class LiveGoogle:
         return {"id": f["id"], "name": f["name"], "link": f.get("webViewLink", "")}
 
     def trash_own_upload(self, file_id: str) -> None:
+        """Move a file MAESTRO uploaded to the Drive trash. The drive.file permission only allows
+        this for MAESTRO's own uploads.
+        """
         # drive.file scope: this only works on files MAESTRO itself uploaded.
         self.drive.files().update(fileId=file_id, body={"trashed": True}).execute()
 
@@ -271,6 +325,7 @@ class LiveGoogle:
 
     @property
     def calendar(self):
+        """The Calendar client, created on first use."""
         if getattr(self, "_calendar", None) is None:
             self._calendar = self._svc("calendar", "v3")
         return self._calendar
@@ -283,6 +338,9 @@ class LiveGoogle:
         return res.get("items", [])
 
     def calendar_add(self, event: dict) -> dict:
+        """Insert an event into the primary calendar with no attendees and sendUpdates='none', so
+        nobody is emailed.
+        """
         # sendUpdates="none" and no attendees: nobody is ever emailed.
         body = {k: v for k, v in event.items() if k != "attendees"}
         e = self.calendar.events().insert(calendarId="primary", body=body,
@@ -290,5 +348,6 @@ class LiveGoogle:
         return {"id": e["id"], "link": e.get("htmlLink", ""), "summary": e.get("summary", "")}
 
     def calendar_delete_own(self, event_id: str) -> None:
+        """Delete an event by id without notifying anyone."""
         self.calendar.events().delete(calendarId="primary", eventId=event_id,
                                       sendUpdates="none").execute()

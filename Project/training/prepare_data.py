@@ -60,6 +60,7 @@ OUT_OF_SCOPE_TARGET = (
 
 
 def load_split(name: str) -> list[dict]:
+    """Read one dataset split, or explain how to build it."""
     path = ROOT / "data" / "splits" / f"{name}.jsonl"
     if not path.exists():
         raise SystemExit(f"{path} is missing — run `python data/build_dataset.py`")
@@ -106,6 +107,9 @@ def target_for(row: dict) -> str | None:
 
 
 def build_rows(name: str) -> list[dict]:
+    """Turn dataset rows into training examples (system prompt, user prompt, gold plan JSON),
+    leaving out adversarial rows.
+    """
     out = []
     for row in load_split(name):
         if row.get("source") == "adversarial":
@@ -132,6 +136,7 @@ def build_rows(name: str) -> list[dict]:
 
 
 def write_chatml(rows: list[dict], path: Path) -> None:
+    """Write training examples in the chat-messages format used for fine-tuning."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         for r in rows:
@@ -162,6 +167,7 @@ def token_stats(rows: list[dict]) -> dict:
     lengths.sort()
 
     def pct(p: float) -> int:
+        """The p-th percentile of the token lengths."""
         if not lengths:
             return 0
         return lengths[min(len(lengths) - 1, int(p / 100 * (len(lengths) - 1)))]
@@ -172,6 +178,9 @@ def token_stats(rows: list[dict]) -> dict:
 
 
 def main() -> int:
+    """Command line: write the fine-tuning files (ChatML and/or MLX) and print token-length
+    statistics.
+    """
     ap = argparse.ArgumentParser(description="prepare DeskPlan for fine-tuning")
     ap.add_argument("--format", choices=["all", "chatml", "mlx"], default="all")
     ap.add_argument("--max-seq-len", type=int, default=2048)

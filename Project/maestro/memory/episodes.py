@@ -91,6 +91,9 @@ class Episode:
 
 class EpisodeStore:
     def __init__(self, db_path: str | Path):
+        """Open (or create) the episode database and upgrade its table if an older version is
+        found.
+        """
         p = Path(db_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False: the web workspace (maestro/ui.py) serves
@@ -117,6 +120,7 @@ class EpisodeStore:
     # -- writing -----------------------------------------------------------
 
     def new_id(self) -> str:
+        """A fresh episode id like 'e_1a2b3c4d5e'."""
         return f"e_{uuid.uuid4().hex[:10]}"
 
     def record(
@@ -144,6 +148,10 @@ class EpisodeStore:
         critic: list[dict] | None = None,
         variables: dict | None = None,
     ) -> str:
+        """Save one instruction's full story: intent, slots, plan, risk, gate, consent, how many
+        steps worked, timings and the outcome. This is MAESTRO's history and its source of
+        training examples.
+        """
         eid = episode_id or self.new_id()
         self._conn.execute(
             "INSERT OR REPLACE INTO episodes (episode_id, ts, instruction, input_mode,"
@@ -168,6 +176,7 @@ class EpisodeStore:
     # -- reading -----------------------------------------------------------
 
     def get(self, episode_id: str) -> dict | None:
+        """Return one episode by id, or None."""
         cur = self._conn.execute("SELECT * FROM episodes WHERE episode_id = ?",
                                  (episode_id,))
         row = cur.fetchone()
@@ -176,6 +185,7 @@ class EpisodeStore:
         return dict(zip([c[0] for c in cur.description], row))
 
     def recent(self, limit: int = 20) -> list[dict]:
+        """The newest episodes, most recent first."""
         cur = self._conn.execute(
             "SELECT * FROM episodes ORDER BY ts DESC LIMIT ?", (limit,)
         )
@@ -215,6 +225,9 @@ class EpisodeStore:
 
     @staticmethod
     def is_undoable(row: dict) -> bool:
+        """True if an episode completed, stored what undo needs, and its plan declares at least one
+        undo step.
+        """
         if row.get("status") not in EpisodeStore.UNDOABLE_STATUSES:
             return False
         if not row.get("plan_json") or row.get("variables_json") is None:
@@ -244,11 +257,13 @@ class EpisodeStore:
         self._conn.commit()
 
     def stats(self) -> dict[str, int]:
+        """How many episodes ended in each status (completed, refused, ...)."""
         return dict(self._conn.execute(
             "SELECT status, COUNT(*) FROM episodes GROUP BY status"
         ).fetchall())
 
     def intent_counts(self) -> dict[str, int]:
+        """How many episodes there were of each intent."""
         return dict(self._conn.execute(
             "SELECT COALESCE(intent,'?'), COUNT(*) FROM episodes GROUP BY intent"
         ).fetchall())
@@ -331,6 +346,7 @@ class EpisodeStore:
         return counts
 
     def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()
 
 
@@ -345,6 +361,7 @@ def expected_behavior(status: str, gate: str | None) -> str | None:
 
 
 def _outcome(status: str) -> str:
+    """Map a run status to the outcome label used when exporting training data."""
     return {
         "completed": "success",
         "blocked": "blocked",

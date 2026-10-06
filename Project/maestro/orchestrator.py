@@ -57,6 +57,7 @@ class StepReport:
 
     @property
     def postconditions_ok(self) -> bool:
+        """True if every postcondition check after this step passed."""
         return all(c.ok for c in self.checks)
 
 
@@ -77,21 +78,26 @@ class RunReport:
 
     @property
     def ok(self) -> bool:
+        """True if the whole plan completed."""
         return self.status == "completed"
 
     @property
     def steps_ok(self) -> int:
+        """How many steps succeeded."""
         return sum(1 for s in self.steps if s.ok)
 
     @property
     def gate(self) -> str:
+        """The consent gate the safety verdict chose (auto, confirm, typed confirm, block)."""
         return self.verdict.gate if self.verdict else "unknown"
 
     @property
     def risk(self) -> Risk:
+        """The plan's overall risk level (R0 if it was never scored)."""
         return self.verdict.risk if self.verdict else Risk.R0
 
     def as_dict(self) -> dict:
+        """A short summary of the run as a plain dict, for logs, the UI and evaluation."""
         return {
             "plan_id": self.plan_id,
             "status": self.status,
@@ -120,6 +126,10 @@ class Orchestrator:
         enable_postconditions: bool = True,
         enable_critic: bool = True,
     ):
+        """Set up the orchestrator with its safety parts: path policy, audit log, consent gate,
+        verifier and critic. The enable_* switches turn single safety layers off, only for the
+        ablation study.
+        """
         self.policy = policy or PathPolicy()
         self.audit = audit
         self.gate = gate or ConsentGate()
@@ -137,6 +147,9 @@ class Orchestrator:
         self.on_step: Callable[[StepReport], None] | None = None
 
     def _step_done(self, step: StepReport) -> None:
+        """Tell the observer (e.g. the voice agent) a step finished; an observer that crashes never
+        fails the run.
+        """
         if self.on_step is not None:
             try:
                 self.on_step(step)
@@ -148,6 +161,10 @@ class Orchestrator:
     def run(self, plan: Plan, *, episode_id: str | None = None,
             intent: str | None = None, slots=None,
             preview_only: bool = False) -> RunReport:
+        """Run one plan safely, in order: score its risk (a blocked plan stops here), let the
+        critic review it, simulate every step (dry run), ask for consent if the gate needs it,
+        then execute. Every stage is written to the audit log.
+        """
         self._log("PROPOSED", episode_id, plan_id=plan.plan_id, detail=plan.instruction)
         report = RunReport(plan.plan_id)
 
@@ -251,6 +268,9 @@ class Orchestrator:
             ctx.close()
 
     def _dry_run_steps(self, plan: Plan, ctx: Context) -> list[EffectManifest]:
+        """Simulate every step without changing anything and collect what each would do. Steps that
+        depend on earlier results are marked as unknown instead of guessed.
+        """
         from maestro import registry as _registry
 
         manifests: list[EffectManifest] = []
@@ -293,6 +313,9 @@ class Orchestrator:
 
     def _execute(self, plan: Plan, report: RunReport, guard: BudgetGuard,
                  episode_id: str | None) -> RunReport:
+        """Execute the plan inside one Context, and always close it (and its browser) afterwards,
+        however the run ends.
+        """
         # One Context per plan. It owns plan-scoped resources — the browser
         # session above all — and `close()` runs on EVERY exit: normal return,
         # a halted step, a budget breach, or an exception nobody anticipated.
@@ -306,6 +329,9 @@ class Orchestrator:
 
     def _execute_steps(self, plan: Plan, report: RunReport, guard: BudgetGuard,
                        episode_id: str | None, ctx: Context) -> RunReport:
+        """Run the steps in order: check preconditions, execute, check postconditions and the
+        budget. Any failure undoes the completed steps in reverse order.
+        """
         undo_stack: list[tuple[str, Result]] = []
         t0 = time.perf_counter()
         guard.reset()
@@ -384,6 +410,9 @@ class Orchestrator:
     def _halt(self, plan: Plan, report: RunReport, undo_stack, status: str,
               message: str, episode_id: str | None, t0: float,
               guard: BudgetGuard) -> RunReport:
+        """Stop the run: undo the completed steps, then fill in the final status, message, time and
+        budget.
+        """
         self._rollback(plan, undo_stack, episode_id)
         report.status = status
         report.message = message
@@ -392,6 +421,9 @@ class Orchestrator:
         return report
 
     def _rollback(self, plan: Plan, undo_stack, episode_id: str | None) -> None:
+        """Undo the completed steps in reverse order, logging each undo and any step that cannot be
+        undone.
+        """
         for aid, result in reversed(undo_stack):
             action = plan.action(aid)
             try:
@@ -474,6 +506,7 @@ class Orchestrator:
     # -- audit -------------------------------------------------------------
 
     def _log(self, event: str, episode_id: str | None = None, **kw) -> None:
+        """Write an event to the audit log, if there is one."""
         if self.audit:
             self.audit.append(event, episode_id=episode_id, **kw)
 
@@ -508,6 +541,7 @@ class UndoReport:
 
     @property
     def ok(self) -> bool:
+        """True if nothing failed and every restored file matched its saved hash."""
         return not self.failed and self.mismatched_files == 0
 
     @property
@@ -516,6 +550,7 @@ class UndoReport:
         return not any("irreversible" in why for _, _, why in self.skipped)
 
     def render(self) -> str:
+        """The undo result as readable text: what was reversed, verified, skipped or failed."""
         lines = [f"Undo of plan {self.plan_id}: {self.reversed} step(s) reversed"]
         for aid, inverse, detail in self.details:
             lines.append(f"  v {aid} via {inverse}: {detail}")
@@ -536,6 +571,7 @@ class UndoReport:
 
 
 def _spec_or_none(verb: str):
+    """The registry entry for a verb, or None if it is unknown."""
     from maestro import registry as _registry
 
     try:

@@ -87,6 +87,7 @@ class Clarification:
     options: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
+        """The clarification as a plain dict, for the episode log and the web UI."""
         return {"needed": self.needed, "question": self.question, "reason": self.reason,
                 "slot": self.slot, "options": self.options}
 
@@ -96,9 +97,15 @@ NOT_NEEDED = Clarification(False)
 
 class ClarificationManager:
     def __init__(self, threshold: float = CONFIDENCE_THRESHOLD):
+        """Set the confidence below which MAESTRO asks instead of acting."""
         self.threshold = threshold
 
     def check(self, instruction: str, pred: IntentPrediction, slots: Slots) -> Clarification:
+        """Decide whether to ask the user before planning. In order: a vague destructive request
+        ('clean up ...'), a deletion with no stated target, low classifier confidence, then any
+        required detail (slot) that is still missing. A confident refusal never triggers a
+        question.
+        """
         # A *confident* refusal is a decision, not an ambiguity — never ask
         # about it. An unconfident one is just "no rule matched", and that
         # deserves a question.
@@ -177,10 +184,13 @@ class ClarificationManager:
 
 
 def _human(intent: str) -> str:
+    """Turn an intent name like FILE_ORGANIZE into 'file organize' for questions."""
     return intent.replace("_", " ").lower()
 
 
 def _slot_options(slot: str, intent: str, slots: Slots) -> list[str]:
+    """Suggested answers to offer for a missing detail (e.g. common folders for 'which folder?').
+    """
     if slot == "destination" and intent in (FILE_ORGANIZE, FILE_DELETE):
         base = ["~/Documents", "~/maestro_workspace/archive"]
         if slots.file_type:

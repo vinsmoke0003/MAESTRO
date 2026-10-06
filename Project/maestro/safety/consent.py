@@ -34,6 +34,7 @@ class ConsentRequest:
 
     @property
     def gate(self) -> str:
+        """Which kind of approval this plan needs: auto, confirm, typed_confirm or refuse."""
         return self.verdict.gate
 
     @property
@@ -70,6 +71,10 @@ class ConsentGate:
     _remembered: set[str] = field(default_factory=set)
 
     def decide(self, req: ConsentRequest) -> Approval:
+        """Decide whether the plan may run. Refused plans never run, R0/R1 run without asking,
+        remembered plans run again, otherwise the user is asked; an R3 plan is only approved by
+        a typed confirmation, whatever the UI says.
+        """
         gate = req.gate
 
         if gate == "refuse":
@@ -98,6 +103,7 @@ class ConsentGate:
         return answer
 
     def forget_all(self) -> None:
+        """Forget every plan the user said to always allow in this session."""
         self._remembered.clear()
 
 

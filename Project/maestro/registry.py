@@ -48,6 +48,7 @@ class VerbSpec:
 
     @property
     def blocked_reason(self) -> str:
+        """The refusal message shown when a plan uses this hard-blocked verb."""
         return f"{self.verb} is hard-blocked by policy; no override exists"
 
 
@@ -55,6 +56,7 @@ _REGISTRY: dict[str, VerbSpec] = {}
 
 
 def register(spec: VerbSpec) -> VerbSpec:
+    """Add a verb to the closed registry. Registering the same verb twice is an error."""
     if spec.verb in _REGISTRY:
         raise ValueError(f"verb {spec.verb!r} registered twice")
     _REGISTRY[spec.verb] = spec
@@ -62,6 +64,9 @@ def register(spec: VerbSpec) -> VerbSpec:
 
 
 def get(verb: str) -> VerbSpec:
+    """Look up a verb's specification; an unknown verb raises RegistryError, which rejects the
+    plan.
+    """
     try:
         return _REGISTRY[verb]
     except KeyError:
@@ -69,6 +74,7 @@ def get(verb: str) -> VerbSpec:
 
 
 def known_verbs() -> list[str]:
+    """Every registered verb name, sorted."""
     return sorted(_REGISTRY)
 
 
@@ -78,10 +84,12 @@ def plannable_verbs() -> list[str]:
 
 
 def hard_blocked_verbs() -> list[str]:
+    """The verbs that exist only so they can be refused (they have no executor)."""
     return sorted(v for v, s in _REGISTRY.items() if s.hard_blocked)
 
 
 def by_category() -> dict[str, list[str]]:
+    """Group the verb names by category (file, browser, google, ...)."""
     out: dict[str, list[str]] = {}
     for v, s in sorted(_REGISTRY.items()):
         out.setdefault(s.category, []).append(v)
@@ -115,4 +123,5 @@ def snapshot() -> dict[str, dict]:
 
 
 def _reset_for_tests() -> None:  # pragma: no cover - test helper
+    """Empty the registry. Used only by tests."""
     _REGISTRY.clear()

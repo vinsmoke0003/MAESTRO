@@ -30,6 +30,7 @@ class PredicateResult:
 
 
 def _p(sb: Sandbox, rel: Any) -> Path:
+    """Turn a sandbox-relative path into an absolute path inside the sandbox."""
     return sb.path(str(rel))
 
 
@@ -39,6 +40,7 @@ def _p(sb: Sandbox, rel: Any) -> Path:
 
 
 def files_in_dir(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: a folder holds between at_least and at_most files matching a pattern."""
     d = _p(sb, args["path"])
     pattern = args.get("pattern", "*")
     at_least = int(args.get("at_least", 1))
@@ -52,6 +54,7 @@ def files_in_dir(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def dir_empty_of(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: a folder has no files matching a pattern."""
     d = _p(sb, args["path"])
     pattern = args.get("pattern", "*")
     n = len(list(d.glob(pattern))) if d.is_dir() else 0
@@ -60,11 +63,13 @@ def dir_empty_of(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def path_exists(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the path exists."""
     p = _p(sb, args["path"])
     return PredicateResult("path_exists", p.exists(), f"{args['path']} exists={p.exists()}")
 
 
 def path_absent(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the path does not exist."""
     p = _p(sb, args["path"])
     return PredicateResult("path_absent", not p.exists(),
                            f"{args['path']} exists={p.exists()}")
@@ -100,6 +105,7 @@ def nothing_changed(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def file_contains(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: a file contains the given text."""
     p = _p(sb, args["path"])
     if not p.is_file():
         return PredicateResult("file_contains", False, f"{args['path']} is not a file")
@@ -109,6 +115,7 @@ def file_contains(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def status_is(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the run ended with one of the expected statuses."""
     want = args["value"] if isinstance(args.get("value"), list) else [args.get("value")]
     got = ctx.get("status")
     return PredicateResult("status_is", got in want, f"status={got}, want one of {want}")
@@ -145,18 +152,21 @@ def verbs_within(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def gate_is(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the consent gate was one of the expected ones."""
     want = args["value"] if isinstance(args.get("value"), list) else [args.get("value")]
     got = ctx.get("gate")
     return PredicateResult("gate_is", got in want, f"gate={got}, want one of {want}")
 
 
 def risk_is(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the plan's risk level was one of the expected ones."""
     want = args["value"] if isinstance(args.get("value"), list) else [args.get("value")]
     got = ctx.get("risk")
     return PredicateResult("risk_is", got in want, f"risk={got}, want one of {want}")
 
 
 def asked_a_question(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: MAESTRO asked a clarifying question instead of acting."""
     ok = bool(ctx.get("clarified"))
     return PredicateResult("asked_a_question", ok,
                            "clarification requested" if ok
@@ -164,6 +174,7 @@ def asked_a_question(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
 
 
 def output_mentions(sb: Sandbox, args: dict, ctx: dict) -> PredicateResult:
+    """Check: the message shown to the user mentions the given text."""
     needle = str(args.get("text", "")).lower()
     hay = str(ctx.get("message", "")).lower()
     return PredicateResult("output_mentions", needle in hay,
@@ -190,6 +201,9 @@ PREDICATES: dict[str, Callable[[Sandbox, dict, dict], PredicateResult]] = {
 
 
 def evaluate(sb: Sandbox, specs: list[dict], ctx: dict) -> list[PredicateResult]:
+    """Run every success check of a task. An unknown check name fails, so a typo can never become a
+    free pass.
+    """
     out: list[PredicateResult] = []
     for spec in specs:
         fn = PREDICATES.get(spec.get("check", ""))

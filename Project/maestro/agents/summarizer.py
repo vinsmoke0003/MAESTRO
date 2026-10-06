@@ -80,6 +80,7 @@ class InjectionScan:
 
     @property
     def summary(self) -> str:
+        """A short line saying whether injection markers were found, and which ones."""
         if not self.detected:
             return "no injection markers found"
         return "injection markers: " + ", ".join(sorted(set(self.labels)))
@@ -110,10 +111,15 @@ class Summarizer:
     """Tool-less by construction. It is handed a string and returns a string."""
 
     def __init__(self, client: LLMClient | None = None, max_chars: int = 12_000):
+        """Set up the summariser, optionally with a model; it is given no tools at all."""
         self._client = client
         self._max_chars = max_chars
 
     def summarize(self, content: str, *, what: str = "document") -> Summary:
+        """Summarise untrusted text for the user. It first scans for injection markers, wraps the
+        text as data, and falls back to a simple extractive summary if there is no model. Its
+        output is only ever shown, never turned into actions.
+        """
         content = content or ""
         scan = scan_for_injection(content)
         clipped = content[: self._max_chars]

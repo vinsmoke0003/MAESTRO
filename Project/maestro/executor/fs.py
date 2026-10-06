@@ -153,10 +153,12 @@ register(VerbSpec("fs.delete_permanent", DeletePermanentArgs, Risk.R3, reversibl
 
 
 def _p(s: str) -> Path:
+    """Turn an argument string into a Path, expanding ~."""
     return Path(str(s)).expanduser()
 
 
 def _size(p: Path) -> int:
+    """File size in bytes, or 0 for folders and unreadable paths."""
     try:
         return p.stat().st_size if p.is_file() else 0
     except OSError:
@@ -186,6 +188,8 @@ class GlobExecutor:
     verb = "fs.glob"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: count the matching files and their total size (reading only, nothing changes).
+        """
         a = GlobArgs.model_validate(resolve(args, ctx))
         matches = self._match(a)
         return EffectManifest(
@@ -195,16 +199,21 @@ class GlobExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Return the list of files matching the pattern in the folder."""
         a = GlobArgs.model_validate(resolve(args, ctx))
         matches = [str(m) for m in self._match(a)]
         return Result(ok=True, output=matches, detail=f"{len(matches)} match(es)",
                       files_touched=len(matches))
 
     def undo(self, result: Result, ctx: Context) -> None:  # read-only
+        """Read-only, so there is nothing to undo."""
         pass
 
     @staticmethod
     def _match(a: GlobArgs) -> list[Path]:
+        """Find the matching files (optionally in sub-folders), sorted; an empty list if the folder
+        does not exist.
+        """
         root = _p(a.root)
         if not root.is_dir():
             return []
@@ -216,11 +225,13 @@ class ListDirExecutor:
     verb = "fs.list_dir"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many entries the folder has."""
         a = ListDirArgs.model_validate(resolve(args, ctx))
         entries = self._entries(a)
         return EffectManifest(summary=f"List {a.path}", files_touched=len(entries))
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Return what is in a folder (files, plus sub-folders if asked)."""
         a = ListDirArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         if not p.is_dir():
@@ -230,10 +241,12 @@ class ListDirExecutor:
                       files_touched=len(entries))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
     @staticmethod
     def _entries(a: ListDirArgs) -> list[Path]:
+        """The folder's entries, sorted; empty if it is not a folder."""
         p = _p(a.path)
         if not p.is_dir():
             return []
@@ -244,6 +257,9 @@ class ReadTextExecutor:
     verb = "fs.read_text"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which file will be read and how much of it, flagging that its contents are
+        untrusted.
+        """
         a = ReadTextArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         return EffectManifest(
@@ -254,6 +270,9 @@ class ReadTextExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Read a text file (up to max_bytes). The result is marked untrusted: it may be shown or
+        summarised, never given to the planner.
+        """
         a = ReadTextArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         if not p.is_file():
@@ -265,6 +284,7 @@ class ReadTextExecutor:
                       files_touched=1, untrusted=True)
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
 
@@ -272,10 +292,12 @@ class StatExecutor:
     verb = "fs.stat"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which file's details will be read."""
         a = StatArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Inspect metadata of {a.path}", files_touched=1)
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Return a file's name, size, type and last-modified time."""
         a = StatArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         if not p.exists():
@@ -287,6 +309,7 @@ class StatExecutor:
         })
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Read-only, so there is nothing to undo."""
         pass
 
 
@@ -294,6 +317,7 @@ class MkdirExecutor:
     verb = "fs.mkdir"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the folder that will be created, or a note that it already exists."""
         a = MkdirArgs.model_validate(resolve(args, ctx))
         exists = _p(a.path).is_dir()
         return EffectManifest(
@@ -302,6 +326,7 @@ class MkdirExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Create the folder (and any missing parents), remembering whether it was new."""
         a = MkdirArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         created = not p.is_dir()
@@ -310,6 +335,7 @@ class MkdirExecutor:
                       undo_data={"path": str(p), "created": created})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Remove the folder again, but only if this run created it and it is still empty."""
         d = result.undo_data
         if d and d.get("created"):
             p = Path(d["path"])
@@ -321,6 +347,9 @@ class CopyExecutor:
     verb = "fs.copy"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: what will be copied where, its size, and whether a file with that name already
+        exists.
+        """
         a = CopyArgs.model_validate(resolve(args, ctx))
         src = _p(a.src)
         return EffectManifest(
@@ -332,6 +361,9 @@ class CopyExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Copy one file. If the destination name is taken, the copy gets a new name; nothing is
+        overwritten.
+        """
         a = CopyArgs.model_validate(resolve(args, ctx))
         src, dst = _p(a.src), _p(a.dst)
         if not src.is_file():
@@ -343,6 +375,7 @@ class CopyExecutor:
                       detail=f"copied to {final.name}", undo_data={"copy": str(final)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the copy that was made."""
         if result.undo_data:
             Path(result.undo_data["copy"]).unlink(missing_ok=True)
 
@@ -351,6 +384,8 @@ class WriteTextExecutor:
     verb = "fs.write_text"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the file that will be written and whether a file of that name already exists.
+        """
         a = WriteTextArgs.model_validate(resolve(args, ctx))
         exists = _p(a.path).exists()
         return EffectManifest(
@@ -364,6 +399,9 @@ class WriteTextExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Write text to a new file; if the name is taken, a new name is used instead of
+        overwriting.
+        """
         a = WriteTextArgs.model_validate(resolve(args, ctx))
         p = _p(a.path)
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -374,6 +412,7 @@ class WriteTextExecutor:
                       undo_data={"written": str(final)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the file that was written."""
         if result.undo_data:
             Path(result.undo_data["written"]).unlink(missing_ok=True)
 
@@ -382,6 +421,7 @@ class RenameExecutor:
     verb = "fs.rename"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the old and new name, and whether the new name is already taken."""
         a = RenameArgs.model_validate(resolve(args, ctx))
         src = _p(a.path)
         target = src.with_name(a.new_name)
@@ -393,6 +433,9 @@ class RenameExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Rename a file in place. A new name containing a slash is refused, so a rename can never
+        become a move to another folder.
+        """
         a = RenameArgs.model_validate(resolve(args, ctx))
         src = _p(a.path)
         if not src.exists():
@@ -407,6 +450,7 @@ class RenameExecutor:
                       undo_data={"from": str(src), "to": str(target)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Rename the file back to its original name."""
         d = result.undo_data or {}
         moved = Path(d.get("to", ""))
         if moved.exists():
@@ -417,6 +461,8 @@ class CopyBatchExecutor:
     verb = "fs.copy_batch"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many files will be copied, their size, and which names will need renaming.
+        """
         a = CopyBatchArgs.model_validate(resolve(args, ctx))
         dest = _p(a.dest_dir)
         collisions = [s for s in a.sources if (dest / Path(s).name).exists()]
@@ -430,6 +476,9 @@ class CopyBatchExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Copy several files into a folder, renaming on name clashes; stop at the first missing
+        file and report what was copied.
+        """
         a = CopyBatchArgs.model_validate(resolve(args, ctx))
         dest = _p(a.dest_dir)
         dest.mkdir(parents=True, exist_ok=True)
@@ -446,6 +495,7 @@ class CopyBatchExecutor:
                       undo_data={"copies": made}, files_touched=len(made))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete every copy that was made."""
         for c in (result.undo_data or {}).get("copies", []):
             Path(c).unlink(missing_ok=True)
 
@@ -454,6 +504,9 @@ class MoveBatchExecutor:
     verb = "fs.move_batch"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many files will move, their size, which names clash, and whether the
+        destination folder will be created.
+        """
         a = MoveBatchArgs.model_validate(resolve(args, ctx))
         dest = _p(a.dest_dir)
         collisions = [s for s in a.sources if (dest / Path(s).name).exists()]
@@ -469,6 +522,9 @@ class MoveBatchExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Move files into a folder, recording a manifest of where each one came from and a hash of
+        its contents. That manifest is what undo uses to put everything back.
+        """
         a = MoveBatchArgs.model_validate(resolve(args, ctx))
         dest = _p(a.dest_dir)
         dest.mkdir(parents=True, exist_ok=True)
@@ -497,6 +553,7 @@ class MoveBatchExecutor:
                       files_touched=len(manifest))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Move every file back to where it came from, newest first."""
         for entry in reversed(result.undo_data or []):
             src, moved_to = Path(entry["from"]), Path(entry["to"])
             if moved_to.is_file():
@@ -511,11 +568,15 @@ class RestoreManifestExecutor:
     verb = "fs.restore_manifest"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many moved files will be put back."""
         a = RestoreManifestArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Restore {len(a.manifest)} file(s) to their "
                                       f"original locations", files_touched=len(a.manifest))
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Undo a move from its manifest: put each file back, never overwrite anything now at the
+        original spot, and check each file's contents against the hash taken when it moved.
+        """
         a = RestoreManifestArgs.model_validate(resolve(args, ctx))
         restored: list[str] = []
         missing: list[str] = []      # the moved file is no longer where we put it
@@ -555,6 +616,7 @@ class RestoreManifestExecutor:
                       detail="; ".join(bits), files_touched=len(restored))
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Restoring is itself the undo; there is nothing further to reverse."""
         pass
 
 
@@ -562,6 +624,7 @@ class TrashExecutor:
     verb = "fs.trash"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many items will go to the Recycle Bin / Trash and how big they are."""
         a = TrashArgs.model_validate(resolve(args, ctx))
         existing = [p for p in a.paths if _p(p).exists()]
         return EffectManifest(
@@ -573,6 +636,9 @@ class TrashExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Send items to the Recycle Bin / Trash with send2trash. Files are never permanently
+        deleted.
+        """
         try:
             from send2trash import send2trash
         except ImportError as e:  # pragma: no cover - environment dependent
@@ -589,6 +655,9 @@ class TrashExecutor:
                       files_touched=len(trashed), undo_data={"trashed": trashed})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Restoring from the Trash is a manual step on most systems, so this reports it as not
+        available.
+        """
         # Programmatic restore from Trash is platform-specific; v1 treats trash
         # as manually reversible (it IS the safety mechanism vs unlink).
         raise NotImplementedError("restore from Trash is a manual step")

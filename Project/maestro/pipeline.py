@@ -84,17 +84,21 @@ class Turn:
 
     @property
     def ok(self) -> bool:
+        """True if this instruction completed."""
         return self.status == "completed"
 
     @property
     def gate(self) -> str:
+        """The consent gate used, or 'none' if nothing ran."""
         return self.report.gate if self.report else "none"
 
     @property
     def risk(self) -> str:
+        """The plan's risk level as text (R0 if nothing ran)."""
         return str(self.report.risk) if self.report else "R0"
 
     def as_dict(self) -> dict:
+        """The whole turn summarised as a plain dict, for the UI, logs and evaluation."""
         return {
             "instruction": self.instruction,
             "episode_id": self.episode_id,
@@ -141,6 +145,9 @@ class MaestroPipeline:
     enable_prefilter: bool = True
 
     def __post_init__(self) -> None:
+        """Build every part of the pipeline: state folders, audit log, memory stores, intent
+        classifier, entity extractor, clarifier, critic, planner and orchestrator.
+        """
         self.cfg.ensure_dirs()
         self.policy = self.policy or PathPolicy()
         self.audit = self.audit if self.audit is not None else AuditLog(self.cfg.audit_db)
@@ -175,6 +182,8 @@ class MaestroPipeline:
     # ------------------------------------------------------------- wiring --
 
     def _default_planner(self):
+        """Pick the model backend and build the hybrid planner (LLM first, templates as fallback).
+        """
         backend = router.pick(self.cfg)
         llm = (Planner(backend.client, home=Path.home()) if backend.available else None)
         self.backend_note = backend.note
@@ -182,6 +191,7 @@ class MaestroPipeline:
         return HybridPlanner(llm=llm)
 
     def _llm_client(self):
+        """The model client inside the planner, or None if there is none."""
         p = self.planner
         llm = getattr(p, "llm", None)
         return getattr(llm, "client", None)
@@ -204,6 +214,9 @@ class MaestroPipeline:
             clf_mod.safety_prefilter = real
 
     def _known_paths(self) -> dict[str, str]:
+        """Folder names learned from past tasks (e.g. 'invoices' -> ~/Documents/Invoices); empty if
+        memory is off.
+        """
         if not self.enable_memory or self.prefs is None:
             return {}
         try:
@@ -212,6 +225,8 @@ class MaestroPipeline:
             return {}
 
     def describe(self) -> str:
+        """One line describing this setup: version, model backend, intent classifier and workspace.
+        """
         return (f"MAESTRO {_version()} · {router.describe(self.cfg)} · "
                 f"intent={self.classifier.name} · workspace={self.cfg.workspace}")
 
@@ -488,6 +503,7 @@ class MaestroPipeline:
         return (answer or None), (None if answer else "I did not catch that")
 
     def _cancelled(self, pending: Turn, message: str) -> Turn:
+        """End a pending clarification because the user cancelled it."""
         t = Turn(instruction=pending.instruction, status="cancelled", message=message,
                  slots=pending.slots, intent=pending.intent, rounds=pending.rounds + 1)
         self._audit("ABORTED", pending.episode_id or None, detail="user cancelled")
@@ -539,6 +555,9 @@ class MaestroPipeline:
         llm.exemplars = [(h.instruction, h.plan) for h in hits] or None
 
     def _learn(self, instruction: str, plan: Plan, intent: str) -> None:
+        """After a successful task, remember the folders used and store the example for similar
+        requests later. Never fails the task.
+        """
         try:
             if self.prefs is not None:
                 self.prefs.learn_from_plan(instruction, plan)
@@ -554,6 +573,7 @@ class MaestroPipeline:
 
     def _record(self, turn: Turn, status: str, eid: str, pred: IntentPrediction,
                 slots: Slots) -> None:
+        """Save this turn to the episode history."""
         if self.episodes is None:
             return
         report = turn.report
@@ -585,10 +605,12 @@ class MaestroPipeline:
         )
 
     def _audit(self, event: str, eid: str | None, **kw) -> None:
+        """Write an event to the audit log, if there is one."""
         if self.audit:
             self.audit.append(event, episode_id=eid, **kw)
 
     def close(self) -> None:
+        """Close every database the pipeline opened."""
         for obj in (self.audit, self.episodes, self.prefs, self.vectors):
             try:
                 obj.close()  # type: ignore[union-attr]
@@ -602,6 +624,9 @@ class MaestroPipeline:
 
 
 def _outcome_message(report: RunReport) -> str:
+    """The short message shown to the user for each run outcome (done, refused, cancelled, rolled
+    back, ...).
+    """
     if report.status == "completed":
         n = sum(s.files_touched for s in report.steps)
         base = f"Done — {report.steps_ok} step(s) completed"
@@ -650,10 +675,12 @@ def typed_approve(req: ConsentRequest) -> Approval:
 
 
 def always_deny(_: ConsentRequest) -> Approval:
+    """A consent callback that refuses everything (used for non-interactive and preview runs)."""
     return Approval(False, "denied", note="denied by policy in this run")
 
 
 def _version() -> str:
+    """MAESTRO's version number."""
     from maestro import __version__
 
     return __version__

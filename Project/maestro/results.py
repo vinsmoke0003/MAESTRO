@@ -26,6 +26,9 @@ class Presented:
 
 
 def present(turn) -> Presented:
+    """Turn a completed task's answer into lines for the screen and a short sentence to speak. The
+    last value the plan produced is the answer.
+    """
     out = Presented()
     if getattr(turn, "status", "") != "completed" or not turn.report:
         return out
@@ -39,6 +42,9 @@ def present(turn) -> Presented:
 
 
 def _render(value, out: Presented) -> bool:
+    """Pick the right display for a value by its shape: files, emails, Drive files, uploads,
+    calendar events, or plain text.
+    """
     if isinstance(value, list) and value:
         first = value[0]
         if isinstance(first, str):
@@ -68,6 +74,7 @@ def _render(value, out: Presented) -> bool:
 
 
 def _numbered(items: list[str]) -> list[str]:
+    """A numbered list, cut off after SHOW_MAX items with an '... and N more' line."""
     lines = [""] + [f"  {i:3d}. {s}" for i, s in enumerate(items[:SHOW_MAX], 1)]
     if len(items) > SHOW_MAX:
         lines.append(f"  ... and {len(items) - SHOW_MAX} more")
@@ -75,6 +82,7 @@ def _numbered(items: list[str]) -> list[str]:
 
 
 def _files(paths: list[str], out: Presented) -> bool:
+    """Show found files by name, and speak the count and the first few."""
     out.lines = _numbered([PurePath(p).name for p in paths])
     names = [PurePath(p).stem for p in paths[:3]]
     more = f", and {len(paths) - 3} more" if len(paths) > 3 else ""
@@ -90,6 +98,9 @@ def _sender(s: str) -> str:
 
 
 def _mail_list(mails: list[dict], out: Presented) -> bool:
+    """Show matching emails (sender, subject, date, unread marked with *), and speak the count and
+    the latest two.
+    """
     out.lines = _numbered([
         f"{'* ' if m.get('unread') else ''}{_sender(m.get('from', ''))} — "
         f"{m.get('subject', '')}   ({m.get('date', '')[:16]})" for m in mails])
@@ -102,6 +113,9 @@ def _mail_list(mails: list[dict], out: Presented) -> bool:
 
 
 def _mail_bodies(mails: list[dict], out: Presented) -> bool:
+    """Show full emails inside a box marked UNTRUSTED, so it is clear their contents are only
+    shown, never obeyed.
+    """
     lines = [""]
     for m in mails:
         body = m.get("body", "")
@@ -127,6 +141,7 @@ def _mail_bodies(mails: list[dict], out: Presented) -> bool:
 
 
 def _drive_list(files: list[dict], out: Presented) -> bool:
+    """Show Drive files with their modified dates, and speak the count and the first few."""
     out.lines = _numbered([f"{f.get('name', '')}   ({f.get('modified', '')[:10]})"
                            for f in files])
     names = [f.get("name", "") for f in files[:3]]
@@ -137,12 +152,14 @@ def _drive_list(files: list[dict], out: Presented) -> bool:
 
 
 def _uploads(files: list[dict], out: Presented) -> bool:
+    """Show uploaded files with their Drive links."""
     out.lines = _numbered([f"{f.get('name', '')}   {f.get('link', '')}" for f in files])
     out.spoken = f"Uploaded {len(files)} file{'s' if len(files) != 1 else ''} to your Drive."
     return True
 
 
 def _calendar_added(events: list[dict], out: Presented) -> bool:
+    """Show the reminders added to the calendar, with their times."""
     from maestro.google.events import _human_when
 
     out.lines = _numbered([f"{e.get('summary', '')} — "
@@ -155,6 +172,7 @@ def _calendar_added(events: list[dict], out: Presented) -> bool:
 
 
 def _events_found(events: list[dict], out: Presented) -> bool:
+    """Show the upcoming events found in emails."""
     from maestro.google.events import FoundEvent
 
     out.lines = _numbered([FoundEvent(**e).describe() for e in events])

@@ -34,14 +34,19 @@ class Backend:
 
     @property
     def available(self) -> bool:
+        """True if a model client was found."""
         return self.client is not None
 
 
 def pick(cfg: Settings | None = None, *, cache: bool = True) -> Backend:
+    """Choose the planner's model backend from MAESTRO_LLM: 'none', a forced 'ollama' or 'openai',
+    or 'auto' (use Ollama if it is running, otherwise no model and the template planner).
+    """
     cfg = cfg or settings()
     choice = (cfg.backend or "auto").lower()
 
     def wrap(inner: LLMClient, name: str, note: str = "") -> Backend:
+        """Wrap a model client with the response cache and package it as a Backend."""
         client: LLMClient = inner
         if cache:
             client = CachingClient(inner, ResponseCache(cfg.cache_db))
@@ -82,6 +87,9 @@ def pick(cfg: Settings | None = None, *, cache: bool = True) -> Backend:
 
 
 def describe(cfg: Settings | None = None) -> str:
+    """A one-line description of which model backend is in use, for the startup banner and `maestro
+    doctor`.
+    """
     try:
         b = pick(cfg, cache=False)
     except LLMError as e:

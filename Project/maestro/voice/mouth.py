@@ -20,13 +20,15 @@ from maestro.executor.base import NotAvailable
 
 
 class Mouth(Protocol):
-    def say(self, text: str) -> None: ...
+    def say(self, text: str) -> None:
+        """Speak the text aloud."""
 
 
 class SystemMouth:
     """Speaks through the OS voice; degrades to silence if there is none."""
 
     def __init__(self, *, rate: int | None = None):
+        """Use the operating system's text-to-speech (macOS 'say', Windows SAPI, or espeak)."""
         from maestro.executor.platform import backend
 
         self._speech = backend("speech")
@@ -34,6 +36,9 @@ class SystemMouth:
         self.available = True
 
     def say(self, text: str) -> None:
+        """Speak the text, cleaned up for speech. If speech fails, stop trying; the printed text
+        still carries everything.
+        """
         text = speakable(text)
         if not text or not self.available:
             return
@@ -47,6 +52,7 @@ class SilentMouth:
     """`--quiet`, and the fallback when no system voice exists."""
 
     def say(self, text: str) -> None:
+        """Say nothing (for --mute)."""
         return None
 
 
@@ -54,13 +60,16 @@ class RecordingMouth:
     """Tests: remembers everything it was asked to say."""
 
     def __init__(self) -> None:
+        """Tests: start with an empty list of what was said."""
         self.said: list[str] = []
 
     def say(self, text: str) -> None:
+        """Tests: record the text instead of speaking it."""
         self.said.append(speakable(text))
 
     @property
     def transcript(self) -> str:
+        """Tests: everything said so far, joined with ' | '."""
         return " | ".join(self.said)
 
 

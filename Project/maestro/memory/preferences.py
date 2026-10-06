@@ -48,16 +48,20 @@ class Preference:
 
     @property
     def confidence(self) -> float:
+        """Share of observations that agreed with this value (0 to 1)."""
         total = self.observations + self.contradictions
         return self.observations / total if total else 0.0
 
     @property
     def active(self) -> bool:
+        """True once a preference has been seen often enough, and consistently enough, to be used.
+        """
         return self.observations >= MIN_OBSERVATIONS and self.confidence >= 0.6
 
 
 class PreferenceStore:
     def __init__(self, db_path: str | Path):
+        """Open (or create) the preferences table."""
         p = Path(db_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p), check_same_thread=False)
@@ -68,6 +72,9 @@ class PreferenceStore:
 
     def observe(self, key: str, value: str, *, kind: str = "path",
                 learned_from: str = "") -> Preference:
+        """Record that the user used this value for this key (e.g. 'invoices' ->
+        ~/Documents/Invoices). A different value counts as evidence against the old one.
+        """
         key = key.strip().lower()
         existing = self.get(key)
         now = datetime.now(timezone.utc).isoformat()
@@ -128,6 +135,7 @@ class PreferenceStore:
     # -- reading -----------------------------------------------------------
 
     def get(self, key: str) -> Preference | None:
+        """Return one preference by key, or None."""
         row = self._conn.execute(
             "SELECT key, value, kind, observations, contradictions,"
             " COALESCE(learned_from,''), COALESCE(updated_at,'')"
@@ -136,6 +144,7 @@ class PreferenceStore:
         return Preference(*row) if row else None
 
     def all(self) -> list[Preference]:
+        """Every stored preference, most-observed first."""
         return [Preference(*r) for r in self._conn.execute(
             "SELECT key, value, kind, observations, contradictions,"
             " COALESCE(learned_from,''), COALESCE(updated_at,'')"
@@ -149,6 +158,7 @@ class PreferenceStore:
     # -- user control (FR-53) ----------------------------------------------
 
     def set(self, key: str, value: str, kind: str = "path") -> Preference:
+        """Set a preference directly (from `maestro prefs --set`); it is active straight away."""
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
             "INSERT OR REPLACE INTO preferences (key, value, kind, observations,"
@@ -160,14 +170,17 @@ class PreferenceStore:
         return self.get(key)  # type: ignore[return-value]
 
     def forget(self, key: str) -> bool:
+        """Delete one preference. Returns True if it existed."""
         cur = self._conn.execute("DELETE FROM preferences WHERE key = ?",
                                  (key.strip().lower(),))
         self._conn.commit()
         return cur.rowcount > 0
 
     def clear(self) -> None:
+        """Delete every preference."""
         self._conn.execute("DELETE FROM preferences")
         self._conn.commit()
 
     def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()

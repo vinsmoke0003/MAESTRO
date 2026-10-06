@@ -156,6 +156,7 @@ class Entity:
     source: str = "rule"  # rule | gazetteer | memory | default
 
     def as_dict(self) -> dict:
+        """The entity as a plain dict, for logs and the dataset."""
         return {"type": self.type, "value": self.value, "span": list(self.span),
                 "raw": self.raw or self.value, "source": self.source}
 
@@ -185,6 +186,7 @@ class Slots:
     unresolved: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
+        """All slot values (and the entities they came from) as a plain dict."""
         d = {k: v for k, v in self.__dict__.items() if k != "entities"}
         d["entities"] = [e.as_dict() for e in self.entities]
         return d
@@ -195,6 +197,9 @@ class EntityExtractor:
 
     def __init__(self, known_paths: dict[str, str] | None = None,
                  today: date | None = None, use_spacy: bool = False):
+        """Set up the extractor with the user's learned folder names, today's date, and optionally
+        spaCy for person names.
+        """
         self.known_paths = {k.lower(): v for k, v in (known_paths or {}).items()}
         self.today = today or date.today()
         self._nlp = _load_spacy() if use_spacy else None
@@ -202,6 +207,9 @@ class EntityExtractor:
     # -- entity level ------------------------------------------------------
 
     def extract(self, text: str) -> list[Entity]:
+        """Find every detail in the sentence: URLs, email addresses, paths and folder names, file
+        types and names, app names, system metrics and settings, numbers, dates and durations.
+        """
         ents: list[Entity] = []
         low = text.lower()
 
@@ -302,6 +310,9 @@ class EntityExtractor:
         return sorted(ents, key=lambda e: e.span[0])
 
     def _temporal(self, text: str) -> list[Entity]:
+        """Find time expressions: durations ('older than 2 weeks') and dates ('yesterday', 'last
+        month').
+        """
         out: list[Entity] = []
         low = text.lower()
 
@@ -341,6 +352,7 @@ class EntityExtractor:
         return out
 
     def _spacy_people(self, text: str, existing: list[Entity]) -> list[Entity]:
+        """Find person names with spaCy, skipping text already recognised as something else."""
         doc = self._nlp(text)  # type: ignore[misc]
         out = []
         for ent in doc.ents:
@@ -353,6 +365,10 @@ class EntityExtractor:
     # -- slot level --------------------------------------------------------
 
     def slots(self, text: str, intent: str | None = None) -> Slots:
+        """Turn the found entities into the slots the planner needs: source and destination
+        folders, file type or name, app, URL, metric, setting, subject, recipients, and how many
+        days. Anything required but missing is listed as unresolved.
+        """
         ents = self.extract(text)
         s = Slots(entities=ents)
         low = text.lower()
@@ -401,6 +417,7 @@ class EntityExtractor:
 
 
 def _load_spacy():  # pragma: no cover - optional dependency
+    """Load spaCy's small English model if it is installed, else None."""
     try:
         import spacy
 
@@ -411,6 +428,7 @@ def _load_spacy():  # pragma: no cover - optional dependency
 
 def _overlaps(span: tuple[int, int], ents: Iterable[Entity],
               only: set[str] | None = None) -> bool:
+    """True if a text span overlaps an entity already found (optionally only of certain types)."""
     a, b = span
     for e in ents:
         if only and e.type not in only:
@@ -422,6 +440,9 @@ def _overlaps(span: tuple[int, int], ents: Iterable[Entity],
 
 
 def _norm_path(raw: str) -> str:
+    """Tidy a path the user typed: strip quotes, use forward slashes, $HOME -> ~, drop a trailing
+    slash.
+    """
     t = raw.strip().strip("'\"").replace("\\", "/")
     t = t.replace("$HOME", "~")
     if len(t) > 1 and t.endswith("/"):
@@ -465,6 +486,8 @@ def _assign_directions(text: str, paths: list[Entity]) -> tuple[str | None, str 
 
 
 def _subject(text: str) -> str | None:
+    """Pull the topic out of phrases like 'about the project report' or 'draft an email about ...'.
+    """
     m = re.search(r"\b(?:about|regarding|re:|summari[sz]ing|titled)\s+(.{3,80})", text, re.I)
     if m:
         return m.group(1).strip(" .'\"")
@@ -502,4 +525,5 @@ def resolve_path(value: str | None, home: Path | None = None) -> str | None:
 
 
 def utcstamp() -> str:
+    """Current local time as an ISO string, to the second."""
     return datetime.now().isoformat(timespec="seconds")

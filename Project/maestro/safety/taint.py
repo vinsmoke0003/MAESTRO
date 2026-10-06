@@ -69,6 +69,9 @@ class TaintReport:
 
 
 def producer_trust(verb: str) -> Trust:
+    """How trustworthy a verb's output is: T2 for content read from files, web pages or search; T1
+    for lists MAESTRO itself enumerated; T2 for anything unknown (fail closed).
+    """
     if verb in UNTRUSTED_PRODUCERS:
         return Trust.T2
     if verb in DERIVED_PRODUCERS:
@@ -131,6 +134,9 @@ def _sensitive_args_reached(
 
 
 def _refs_in(value) -> list[str]:
+    """Find the names of all $variables used inside an argument value, looking through nested lists
+    and dicts.
+    """
     from maestro.ir.model import VAR_RE
 
     out: list[str] = []

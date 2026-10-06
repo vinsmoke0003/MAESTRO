@@ -46,6 +46,7 @@ RESULTS = ROOT / "eval" / "results"
 
 
 def table(headers: list[str], rows: list[list], title: str = "") -> str:
+    """Render a Markdown table with an optional title (or a 'no data' note)."""
     out = []
     if title:
         out.append(f"### {title}\n")
@@ -61,6 +62,7 @@ def table(headers: list[str], rows: list[list], title: str = "") -> str:
 
 
 def _cell(x) -> str:
+    """Format one table cell; a missing value is written as 'not measured', never as a dash."""
     # `None` means no evidence was collected, and the table must say so. A dash
     # reads as "zero" or "n/a" at a glance; "not measured" cannot be misread.
     if x is None:
@@ -73,6 +75,7 @@ def _cell(x) -> str:
 
 
 def _get(block: dict, suite: str, group: str, key: str, default=None):
+    """Read a nested result value safely, with a default if it is missing."""
     try:
         return block["suites"][suite][group][key]
     except (KeyError, TypeError):
@@ -85,6 +88,7 @@ def _get(block: dict, suite: str, group: str, key: str, default=None):
 
 
 def table1_main(data: dict) -> str:
+    """Table 1: headline success and timing for every configuration."""
     rows = []
     for key, block in data["configs"].items():
         if block.get("skipped"):
@@ -117,6 +121,9 @@ def table1_main(data: dict) -> str:
 
 
 def table2_safety(data: dict) -> str:
+    """Table 2: safety metrics (unsafe executions, false confirms, refusals, ...) per
+    configuration.
+    """
     rows = []
     for key, block in data["configs"].items():
         if block.get("skipped"):
@@ -144,6 +151,7 @@ def table2_safety(data: dict) -> str:
 
 
 def table3_ablations(data: dict) -> str:
+    """Table 3: the ablation study, one safety layer removed at a time (A0-A8)."""
     rows = []
     for key in ("A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"):
         block = data["configs"].get(key)
@@ -174,6 +182,7 @@ def table3_ablations(data: dict) -> str:
 
 
 def table4_models(data: dict) -> str:
+    """Table 4: planner comparison, with cost and whether data stays on the machine."""
     rows = []
     for key, label, cost, private in [
         ("B0", "rule templates (M0)", "0", True),
@@ -196,6 +205,7 @@ def table4_models(data: dict) -> str:
 
 
 def table5_categories(data: dict, config: str) -> str:
+    """Table 5: success rate by task category and difficulty."""
     block = data["configs"].get(config)
     if not block or block.get("skipped"):
         return ""
@@ -215,6 +225,7 @@ def table5_categories(data: dict, config: str) -> str:
 
 
 def table6_adversarial(data: dict, config: str) -> str:
+    """Table 6: adversarial results per attack group: how many were resisted."""
     block = data["configs"].get(config)
     if not block or block.get("skipped"):
         return ""
@@ -252,6 +263,7 @@ def table6_adversarial(data: dict, config: str) -> str:
 
 
 def table7_cross_platform(data: dict) -> str:
+    """Table 7: notes on the cross-platform check and how to compare macOS and Windows runs."""
     plat = data.get("platform", {}).get("system", "?")
     return (
         "### Table 7 — Cross-platform equivalence\n\n"
@@ -269,6 +281,7 @@ def table7_cross_platform(data: dict) -> str:
 
 
 def table8_failures(data: dict, config: str) -> str:
+    """Table 8: failures grouped by cause, with one example each."""
     block = data["configs"].get(config)
     if not block or block.get("skipped"):
         return ""
@@ -328,6 +341,9 @@ Replace the commercial figures with current published prices and cite them
 
 
 def caveats(data: dict) -> str:
+    """Honest notes about this run: skipped tasks, missing capabilities, small samples and anything
+    not measured.
+    """
     notes: list[str] = []
     caps = set(data.get("capabilities", []))
 
@@ -483,6 +499,7 @@ def table_seeds(data: dict) -> str:
 
 
 def build_report(data: dict) -> str:
+    """Assemble the full Markdown results report from all the tables and caveats."""
     primary = "B3" if "B3" in data["configs"] else next(iter(data["configs"]), "")
     plat = data.get("platform", {})
     parts = [
@@ -518,11 +535,15 @@ def build_report(data: dict) -> str:
 
 
 def newest_run() -> Path | None:
+    """The most recent results file, or None."""
     runs = sorted(RESULTS.glob("run_*.json"))
     return runs[-1] if runs else None
 
 
 def main() -> int:
+    """Command line: render the report for a run (the newest by default) and print it or write it
+    to a file.
+    """
     ap = argparse.ArgumentParser(description="render MAESTRO evaluation tables")
     ap.add_argument("run", nargs="?", default=None, help="run id, or newest")
     ap.add_argument("--md", default=None, help="write Markdown to this path")

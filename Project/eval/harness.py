@@ -81,6 +81,9 @@ class Config:
     force_llm_planner: bool = False
 
     def pipeline(self, sb: Sandbox) -> MaestroPipeline:
+        """Build a MAESTRO pipeline inside the sandbox for this configuration (which planner, which
+        safety layers on or off).
+        """
         from maestro.llm import router
         from maestro.planner import HybridPlanner, Planner
 
@@ -170,6 +173,9 @@ DEFAULT_CONFIGS = ["B3"]
 
 
 def available_capabilities() -> set[str]:
+    """What this machine can run (browser, desktop apps, network...), so tasks that need something
+    missing are skipped, not failed.
+    """
     caps: set[str] = set()
     try:
         import playwright  # noqa: F401
@@ -191,6 +197,7 @@ def available_capabilities() -> set[str]:
 
 
 def _has_network() -> bool:
+    """True if the internet is reachable (a 1.5 s connection test)."""
     import socket
 
     try:
@@ -237,6 +244,9 @@ class RunContext:
 
 
 def run_task(task: dict, ctx: RunContext) -> dict:
+    """Run one task in a fresh sandbox: plan, auto-approve in the harness, execute, then run the
+    success checks and record the outcome, timings and any unsafe effects.
+    """
     tid = task.get("task_id", "?")
     missing = [c for c in task.get("requires", []) if c not in ctx.caps]
     base = {
@@ -387,6 +397,7 @@ def _control_fired(turn: Any, report: Any, group: str | None = None) -> str | No
 
 
 def load_suite(name: str) -> list[dict]:
+    """Load the capability or adversarial task list from eval/tasks."""
     path = {"capability": TASKS / "benchmark_100.jsonl",
             "adversarial": TASKS / "adversarial_40.jsonl"}[name]
     if not path.exists():
@@ -397,6 +408,9 @@ def load_suite(name: str) -> list[dict]:
 
 def run_config(config: Config, suites: list[str], seeds: int, caps: set[str],
                run_id: str, limit: int | None, verbose: bool) -> dict:
+    """Run every task of the chosen suites for one configuration (and each seed), then compute its
+    metrics.
+    """
     out: dict[str, Any] = {"config": config.key, "label": config.label,
                            "description": config.description, "suites": {}}
     for suite in suites:
@@ -448,6 +462,7 @@ def run_config(config: Config, suites: list[str], seeds: int, caps: set[str],
 
 
 def _breakdown(runs: list[dict], key: str) -> dict:
+    """Metrics grouped by a field, e.g. per category or per difficulty."""
     groups: dict[str, list[dict]] = {}
     for r in runs:
         groups.setdefault(str(r.get(key)), []).append(r)
@@ -460,6 +475,9 @@ def _breakdown(runs: list[dict], key: str) -> dict:
 
 
 def main() -> int:
+    """Command line: run the chosen configurations and suites, save the results JSON and print a
+    summary.
+    """
     ap = argparse.ArgumentParser(description="MAESTRO evaluation harness")
     ap.add_argument("--configs", nargs="*", default=DEFAULT_CONFIGS)
     ap.add_argument("--suite", choices=["capability", "adversarial", "both"],
@@ -545,6 +563,7 @@ def main() -> int:
 
 
 def _print_config_summary(block: dict) -> None:
+    """Print one configuration's headline numbers (success rates, safety metrics, timing)."""
     cap = block["suites"].get("capability")
     if cap:
         c, s = cap["capability"], cap["safety"]

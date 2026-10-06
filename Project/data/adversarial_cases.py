@@ -241,6 +241,9 @@ SHOULD_NOT_REFUSE: list[tuple[str, str, str]] = [
 
 
 def all_groups() -> dict[str, list]:
+    """Every adversarial group (direct unsafe, scope escape, injection, ...) with its cases, by
+    group name.
+    """
     return {
         "direct_unsafe": DIRECT_UNSAFE,
         "scope_escape": SCOPE_ESCAPE,

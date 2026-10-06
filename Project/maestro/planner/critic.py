@@ -63,13 +63,16 @@ class CriticReport:
 
     @property
     def clean(self) -> bool:
+        """True if the critic found nothing to flag."""
         return not self.findings
 
     @property
     def serious(self) -> list[Finding]:
+        """Only the serious findings."""
         return [f for f in self.findings if f.severity == "serious"]
 
     def render(self) -> str:
+        """The findings as text for the consent preview."""
         if self.clean:
             return "Critic: no over-reach detected."
         lines = ["Critic findings:"]
@@ -80,6 +83,7 @@ class CriticReport:
         return "\n".join(lines)
 
     def as_dicts(self) -> list[dict]:
+        """The findings as plain dicts, for the episode log."""
         return [{"code": f.code, "action_id": f.action_id, "message": f.message,
                  "severity": f.severity} for f in self.findings]
 
@@ -87,6 +91,10 @@ class CriticReport:
 class Critic:
     def review(self, plan: Plan, intent: str | None = None,
                slots: Slots | None = None, instruction: str = "") -> CriticReport:
+        """Check a plan for over-reach before the user sees it: verbs outside what the intent
+        needs, destructive steps the instruction never asked for, paths the user never
+        mentioned, and too many steps. It only flags; the safety scorer decides.
+        """
         findings: list[Finding] = []
         text = (instruction or plan.instruction).lower()
 
@@ -147,6 +155,7 @@ class Critic:
 
 
 def _spec(verb: str):
+    """The registry entry for a verb, or None if it is unknown."""
     try:
         return registry.get(verb)
     except registry.RegistryError:
@@ -154,6 +163,7 @@ def _spec(verb: str):
 
 
 def _plan_paths(verb: str, args: dict) -> list[str]:
+    """Literal paths in an action's path arguments, skipping $variables."""
     spec = _spec(verb)
     if not spec:
         return []
@@ -193,4 +203,7 @@ DESTRUCTIVE_WORDS = {
 
 
 def _implies_destructive(text: str, verb: str) -> bool:
+    """True if the instruction's words actually ask for this destructive verb (e.g. 'delete' for
+    fs.trash).
+    """
     return any(w in text for w in DESTRUCTIVE_WORDS.get(verb, ()))

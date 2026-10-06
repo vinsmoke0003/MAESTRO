@@ -37,6 +37,9 @@ class OllamaClient:
         timeout_s: float = 180.0,
         temperature: float = 0.1,  # planning wants determinism, not creativity
     ):
+        """Set up a client for a local Ollama model. Low temperature, because planning should be
+        predictable.
+        """
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout_s = timeout_s
@@ -62,6 +65,7 @@ class OllamaClient:
         return ok
 
     def _probe(self) -> bool:
+        """Check quickly (0.5 s) whether anything is listening at Ollama's address."""
         import socket
         import urllib.parse
 
@@ -77,6 +81,7 @@ class OllamaClient:
             return False
 
     def models(self) -> list[str]:
+        """The model names installed in Ollama, or [] if it cannot be reached."""
         try:
             with urllib.request.urlopen(f"{self.base_url}/api/tags", timeout=5.0) as r:
                 body = json.loads(r.read())
@@ -87,6 +92,9 @@ class OllamaClient:
     # -- the call ----------------------------------------------------------
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Ask the local model; with a schema, Ollama constrains the output to that JSON shape.
+        Connection and format problems become LLMError.
+        """
         payload: dict = {
             "model": self.model,
             "messages": [

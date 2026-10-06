@@ -14,6 +14,9 @@ from maestro.executor.base import NotAvailable
 
 
 def read_metric(metric: str, path: str = "~") -> dict:
+    """Read one system metric on macOS (disk, memory, battery, os, cpu, time, volume or network)
+    and return it as a small dict.
+    """
     target = Path(path).expanduser()
     if metric == "disk":
         usage = shutil.disk_usage(target if target.exists() else Path.home())
@@ -71,6 +74,7 @@ def read_metric(metric: str, path: str = "~") -> dict:
 
 
 def _osascript(script: str) -> str:
+    """Run a short AppleScript and return its output; raise NotAvailable if it fails."""
     proc = subprocess.run(  # noqa: S603
         ["osascript", "-e", script], capture_output=True, text=True
     )
@@ -80,8 +84,10 @@ def _osascript(script: str) -> str:
 
 
 def get_volume() -> int:
+    """Current output volume, 0-100."""
     return int(_osascript("output volume of (get volume settings)"))
 
 
 def set_volume(level: int) -> None:
+    """Set the output volume, clamped to 0-100."""
     _osascript(f"set volume output volume {max(0, min(100, int(level)))}")

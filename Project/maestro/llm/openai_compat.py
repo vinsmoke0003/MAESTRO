@@ -37,6 +37,9 @@ class OpenAICompatClient:
         timeout_s: float = 120.0,
         temperature: float = 0.1,
     ):
+        """Set up a client for an OpenAI-compatible cloud endpoint (used only as an evaluation
+        baseline).
+        """
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -44,9 +47,13 @@ class OpenAICompatClient:
         self.temperature = temperature
 
     def available(self) -> bool:
+        """True if an API key and base URL are configured."""
         return bool(self.api_key and self.base_url)
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Ask the cloud model for JSON matching the schema, falling back to plain JSON mode if the
+        provider rejects schemas.
+        """
         payload: dict = {
             "model": self.model,
             "messages": [
@@ -73,6 +80,8 @@ class OpenAICompatClient:
             return self._post(payload)
 
     def _post(self, payload: dict) -> str:
+        """Send the request to /chat/completions and return the reply text; errors become LLMError.
+        """
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

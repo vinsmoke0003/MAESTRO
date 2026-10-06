@@ -38,6 +38,7 @@ class Exemplar:
 
 
 def _tokens(text: str) -> list[str]:
+    """Split text into words plus 4-character pieces, so similar phrasings share many tokens."""
     t = text.lower()
     words = re.findall(r"[a-z0-9]+", t)
     grams = [t[i:i + 4] for i in range(max(0, len(t) - 3))]
@@ -45,12 +46,14 @@ def _tokens(text: str) -> list[str]:
 
 
 def _vector(text: str) -> dict[int, float]:
+    """Turn text into a small normalised vector by hashing its tokens (no model needed)."""
     counts = Counter(hash(tok) % DIM for tok in _tokens(text))
     norm = math.sqrt(sum(v * v for v in counts.values())) or 1.0
     return {k: v / norm for k, v in counts.items()}
 
 
 def _cosine(a: dict[int, float], b: dict[int, float]) -> float:
+    """Similarity of two vectors, from 0 (unrelated) to 1 (identical)."""
     if len(a) > len(b):
         a, b = b, a
     return sum(v * b.get(k, 0.0) for k, v in a.items())
@@ -73,6 +76,7 @@ class HashingStore:
     backend = "hashing"
 
     def __init__(self, path: str | Path):
+        """Open (or create) the built-in example store, which needs no extra libraries."""
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p / "exemplars.db") if p.is_dir()
@@ -82,6 +86,7 @@ class HashingStore:
         self._cache: dict[str, dict[int, float]] = {}
 
     def add(self, doc_id: str, instruction: str, plan: dict, intent: str = "") -> None:
+        """Store one instruction with the plan that worked for it."""
         self._conn.execute(
             "INSERT OR REPLACE INTO exemplars (doc_id, instruction, intent, plan_json)"
             " VALUES (?,?,?,?)",
@@ -91,11 +96,13 @@ class HashingStore:
         self._cache[doc_id] = _vector(instruction)
 
     def add_many(self, rows: list[tuple[str, str, dict, str]]) -> int:
+        """Store several examples at once; returns how many."""
         for doc_id, instruction, plan, intent in rows:
             self.add(doc_id, instruction, plan, intent)
         return len(rows)
 
     def query(self, text: str, k: int = 3, intent: str | None = None) -> list[Exemplar]:
+        """Find the k stored examples most similar to the text, optionally only for one intent."""
         q = _vector(text)
         sql = "SELECT doc_id, instruction, intent, plan_json FROM exemplars"
         params: tuple = ()
@@ -112,14 +119,17 @@ class HashingStore:
         return [e for e in out[:k] if e.score > 0.05]
 
     def count(self) -> int:
+        """How many examples are stored."""
         return int(self._conn.execute("SELECT COUNT(*) FROM exemplars").fetchone()[0])
 
     def clear(self) -> None:
+        """Delete every stored example."""
         self._conn.execute("DELETE FROM exemplars")
         self._conn.commit()
         self._cache.clear()
 
     def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()
 
 
@@ -129,6 +139,7 @@ class ChromaStore:  # pragma: no cover - optional dependency
     backend = "chroma"
 
     def __init__(self, path: str | Path, collection: str = "workflows"):
+        """Open a ChromaDB collection (optional, needs the memory extra)."""
         import chromadb
 
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -136,10 +147,12 @@ class ChromaStore:  # pragma: no cover - optional dependency
         self._col = self._client.get_or_create_collection(collection)
 
     def add(self, doc_id: str, instruction: str, plan: dict, intent: str = "") -> None:
+        """Store one instruction with the plan that worked for it."""
         self._col.upsert(ids=[doc_id], documents=[instruction],
                          metadatas=[{"plan": json.dumps(plan), "intent": intent}])
 
     def add_many(self, rows: list[tuple[str, str, dict, str]]) -> int:
+        """Store several examples at once; returns how many."""
         if not rows:
             return 0
         self._col.upsert(
@@ -150,6 +163,7 @@ class ChromaStore:  # pragma: no cover - optional dependency
         return len(rows)
 
     def query(self, text: str, k: int = 3, intent: str | None = None) -> list[Exemplar]:
+        """Find the k most similar stored examples using ChromaDB's embeddings."""
         where = {"intent": intent} if intent else None
         res = self._col.query(query_texts=[text], n_results=k, where=where)
         out = []
@@ -162,12 +176,15 @@ class ChromaStore:  # pragma: no cover - optional dependency
         return out
 
     def count(self) -> int:
+        """How many examples are stored."""
         return int(self._col.count())
 
     def clear(self) -> None:
+        """Delete every stored example."""
         self._col.delete(where={})
 
     def close(self) -> None:
+        """Nothing to close; ChromaDB persists automatically."""
         pass
 
 

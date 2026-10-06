@@ -33,6 +33,7 @@ class CheckResult:
 
 
 def _p(v: Any) -> Path:
+    """Turn a value into a Path, expanding ~."""
     return Path(str(v)).expanduser()
 
 
@@ -42,21 +43,25 @@ def _p(v: Any) -> Path:
 
 
 def _path_exists(args: dict, ctx: Context) -> CheckResult:
+    """Check: the path exists."""
     p = _p(_bind(args.get("path"), ctx))
     return CheckResult("path_exists", p.exists(), f"{p} {'exists' if p.exists() else 'missing'}")
 
 
 def _path_absent(args: dict, ctx: Context) -> CheckResult:
+    """Check: the path no longer exists (e.g. after a move)."""
     p = _p(_bind(args.get("path"), ctx))
     return CheckResult("path_absent", not p.exists(), f"{p} {'still present' if p.exists() else 'absent'}")
 
 
 def _dir_exists(args: dict, ctx: Context) -> CheckResult:
+    """Check: the path is a folder."""
     p = _p(_bind(args.get("path"), ctx))
     return CheckResult("dir_exists", p.is_dir(), f"{p} is{'' if p.is_dir() else ' not'} a directory")
 
 
 def _dir_writable(args: dict, ctx: Context) -> CheckResult:
+    """Check: the folder (or the file's parent folder) can be written to."""
     import os
 
     p = _p(_bind(args.get("path"), ctx))
@@ -66,12 +71,14 @@ def _dir_writable(args: dict, ctx: Context) -> CheckResult:
 
 
 def _var_defined(args: dict, ctx: Context) -> CheckResult:
+    """Check: an earlier step produced this $variable."""
     name = str(args.get("var", "")).lstrip("$")
     ok = name in ctx.variables
     return CheckResult("var_defined", ok, f"${name} {'bound' if ok else 'unbound'}")
 
 
 def _var_nonempty(args: dict, ctx: Context) -> CheckResult:
+    """Check: the $variable holds something (a non-empty list, string or dict)."""
     name = str(args.get("var", "")).lstrip("$")
     value = ctx.variables.get(name)
     ok = bool(value)
@@ -80,6 +87,7 @@ def _var_nonempty(args: dict, ctx: Context) -> CheckResult:
 
 
 def _count_eq(args: dict, ctx: Context) -> CheckResult:
+    """Check: the $variable holds exactly the expected number of items."""
     name = str(args.get("var", "")).lstrip("$")
     expected = int(args.get("count", 0))
     value = ctx.variables.get(name) or []
@@ -113,6 +121,7 @@ def _all_moved(args: dict, ctx: Context) -> CheckResult:
 
 
 def _files_in_dir(args: dict, ctx: Context) -> CheckResult:
+    """Check: a folder contains at least N files matching a pattern."""
     d = _p(_bind(args.get("path"), ctx))
     pattern = str(args.get("pattern", "*"))
     at_least = int(args.get("at_least", 1))
@@ -122,6 +131,7 @@ def _files_in_dir(args: dict, ctx: Context) -> CheckResult:
 
 
 def _file_contains(args: dict, ctx: Context) -> CheckResult:
+    """Check: a file contains the given text."""
     p = _p(_bind(args.get("path"), ctx))
     needle = str(args.get("text", ""))
     if not p.is_file():
@@ -148,6 +158,9 @@ class Verifier:
     """Evaluates a list of Checks against the live context."""
 
     def run(self, checks: list[Check], ctx: Context) -> list[CheckResult]:
+        """Run each pre/postcondition and return the results. An unknown check name fails (it is
+        never skipped), and a check that crashes counts as failed.
+        """
         out: list[CheckResult] = []
         for c in checks:
             fn = CHECKS.get(c.check)
@@ -164,10 +177,12 @@ class Verifier:
 
     @staticmethod
     def all_ok(results: list[CheckResult]) -> bool:
+        """True if every check passed."""
         return all(r.ok for r in results)
 
     @staticmethod
     def summarize(results: list[CheckResult]) -> str:
+        """One line: how many checks passed, or which ones failed and why."""
         failed = [r for r in results if not r.ok]
         if not failed:
             return f"{len(results)} postcondition(s) satisfied"

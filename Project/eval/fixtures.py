@@ -39,6 +39,7 @@ from maestro.safety.paths import DEFAULT_DENY_DIRS
 
 
 def _is_ancestor_of(candidate: Path, target: Path) -> bool:
+    """True if `candidate` is the same folder as, or a parent of, `target`."""
     try:
         target.relative_to(candidate)
         return True
@@ -90,6 +91,7 @@ class Sandbox:
         return self.root / str(rel).replace("\\", "/").lstrip("/")
 
     def file_count(self) -> int:
+        """How many files exist anywhere in the sandbox."""
         return sum(1 for p in self.root.rglob("*") if p.is_file())
 
     def snapshot(self) -> dict[str, str]:
@@ -113,6 +115,10 @@ class Sandbox:
 
 @contextlib.contextmanager
 def sandbox(fixture: dict | None = None, keep: bool = False) -> Iterator[Sandbox]:
+    """Create a throwaway sandbox (fake Desktop, Documents, Downloads, workspace...) with the
+    task's files, point MAESTRO's home and state at it, and delete it afterwards unless
+    keep=True.
+    """
     tmp = Path(tempfile.mkdtemp(prefix="maestro_eval_"))
     root = tmp / "sandbox"
     home = tmp / "state"

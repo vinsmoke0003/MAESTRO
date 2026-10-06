@@ -31,6 +31,7 @@ class BudgetGuard:
     files: int = 0
 
     def reset(self) -> BudgetGuard:
+        """Start counting from zero: the clock, the steps taken and the files touched."""
         self.started_at = time.monotonic()
         self.steps = 0
         self.files = 0
@@ -38,11 +39,15 @@ class BudgetGuard:
 
     @property
     def elapsed_s(self) -> float:
+        """Seconds since the run started."""
         return time.monotonic() - self.started_at
 
     # -- static check, before consent -------------------------------------
 
     def check_static(self, n_actions: int, estimated_files: int) -> str | None:
+        """Before running anything: return a reason if the plan already has too many steps or would
+        touch too many files, else None.
+        """
         if n_actions > self.budget.max_steps:
             return f"plan has {n_actions} steps, budget allows {self.budget.max_steps}"
         if estimated_files > self.budget.max_files_touched:
@@ -55,6 +60,9 @@ class BudgetGuard:
     # -- dynamic check, per step ------------------------------------------
 
     def tick(self, files_touched: int = 0) -> None:
+        """Record one finished step and the files it touched; raise BudgetExceeded the moment
+        steps, files or time go over the plan's budget.
+        """
         self.steps += 1
         self.files += max(0, files_touched)
         if self.steps > self.budget.max_steps:
@@ -71,6 +79,7 @@ class BudgetGuard:
             )
 
     def summary(self) -> dict[str, float]:
+        """What was used against what was allowed, for the run report."""
         return {
             "steps": self.steps,
             "files": self.files,

@@ -55,10 +55,12 @@ class InfoExecutor:
     verb = "sys.info"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Describe which metric will be read."""
         a = InfoArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Read system metric: {a.metric}")
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Read the metric through the OS backend and return its value."""
         a = InfoArgs.model_validate(resolve(args, ctx))
         try:
             value = backend("sysinfo").read_metric(a.metric, a.path)
@@ -67,6 +69,7 @@ class InfoExecutor:
         return Result(ok=True, output=value, detail=f"{a.metric}: {value}")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Reading changes nothing, so there is nothing to undo."""
         pass
 
 
@@ -74,10 +77,12 @@ class VolumeExecutor:
     verb = "sys.set_volume"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Describe the volume change for the preview."""
         a = VolumeArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Set output volume to {a.level}%")
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Set the volume, remembering the old level for undo."""
         a = VolumeArgs.model_validate(resolve(args, ctx))
         mod = backend("sysinfo")
         try:
@@ -89,6 +94,7 @@ class VolumeExecutor:
                       undo_data={"previous": previous})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Put the volume back to what it was before."""
         d = result.undo_data or {}
         if d.get("previous") is not None:
             try:

@@ -175,6 +175,7 @@ class IntentPrediction:
         return self.is_refusal and self.confidence >= CONFIDENCE_THRESHOLD
 
     def top(self, k: int = 3) -> list[tuple[str, float]]:
+        """The k most likely intents with their scores, best first."""
         return sorted(self.scores.items(), key=lambda kv: -kv[1])[:k]
 
 

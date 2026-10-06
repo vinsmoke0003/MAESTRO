@@ -12,8 +12,10 @@ KNOWN_APPS: dict[str, str] = {}
 
 
 def launch(app_id: str) -> str:
+    """Unsupported platform: always raises NotAvailable instead of pretending to succeed."""
     raise NotAvailable(f"app.launch is not implemented on this platform ({app_id!r})")
 
 
 def quit(app_id: str, force: bool = False) -> str:  # noqa: A001
+    """Unsupported platform: always raises NotAvailable instead of pretending to succeed."""
     raise NotAvailable(f"app.quit is not implemented on this platform ({app_id!r})")

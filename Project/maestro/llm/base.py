@@ -30,7 +30,10 @@ class LLMError(Exception):
 class LLMClient(Protocol):
     model: str
 
-    def chat(self, system: str, user: str, *, schema: dict | None = None) -> str: ...
+    def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Send a system and user message to the model and return its text reply. With a JSON
+        schema, the reply must follow it.
+        """
 
 
 @dataclass
@@ -41,6 +44,7 @@ class Usage:
     latencies_ms: list[float] = field(default_factory=list)
 
     def record(self, ms: float, cached: bool) -> None:
+        """Record one model call's time, and whether it came from the cache."""
         self.calls += 1
         self.total_ms += ms
         self.latencies_ms.append(ms)
@@ -48,6 +52,7 @@ class Usage:
             self.cache_hits += 1
 
     def percentile(self, p: float) -> float:
+        """The p-th percentile of call times in milliseconds (e.g. p=50 is the median)."""
         if not self.latencies_ms:
             return 0.0
         xs = sorted(self.latencies_ms)
@@ -55,6 +60,7 @@ class Usage:
         return xs[k]
 
     def as_dict(self) -> dict:
+        """Call count, cache hits and timing summary, for reports."""
         return {
             "calls": self.calls,
             "cache_hits": self.cache_hits,
@@ -76,6 +82,7 @@ CREATE TABLE IF NOT EXISTS llm_cache (
 
 class ResponseCache:
     def __init__(self, db_path: str | Path):
+        """Open (or create) the SQLite cache of model replies."""
         p = Path(db_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p), check_same_thread=False)
@@ -84,18 +91,23 @@ class ResponseCache:
 
     @staticmethod
     def key(model: str, system: str, user: str, schema: dict | None, temperature: float) -> str:
+        """A hash of everything that affects the reply (model, prompts, schema, temperature), used
+        as the cache key.
+        """
         blob = json.dumps(
             [model, system, user, schema, temperature], sort_keys=True, separators=(",", ":")
         )
         return hashlib.sha256(blob.encode()).hexdigest()
 
     def get(self, key: str) -> str | None:
+        """Return the cached reply for a key, or None."""
         row = self._conn.execute(
             "SELECT response FROM llm_cache WHERE key = ?", (key,)
         ).fetchone()
         return row[0] if row else None
 
     def put(self, key: str, model: str, response: str) -> None:
+        """Store a model reply under its key."""
         self._conn.execute(
             "INSERT OR REPLACE INTO llm_cache (key, model, response, ts) VALUES (?,?,?,?)",
             (key, model, response, time.time()),
@@ -103,13 +115,16 @@ class ResponseCache:
         self._conn.commit()
 
     def size(self) -> int:
+        """How many replies are cached."""
         return int(self._conn.execute("SELECT COUNT(*) FROM llm_cache").fetchone()[0])
 
     def clear(self) -> None:
+        """Delete every cached reply."""
         self._conn.execute("DELETE FROM llm_cache")
         self._conn.commit()
 
     def close(self) -> None:
+        """Close the cache database."""
         self._conn.close()
 
 
@@ -118,6 +133,7 @@ class CachingClient:
 
     def __init__(self, inner: LLMClient, cache: ResponseCache | None,
                  temperature: float = 0.1):
+        """Wrap a model client so identical requests are answered from the cache."""
         self.inner = inner
         self.cache = cache
         self.temperature = temperature
@@ -125,9 +141,13 @@ class CachingClient:
 
     @property
     def model(self) -> str:
+        """The wrapped client's model name."""
         return self.inner.model
 
     def chat(self, system: str, user: str, *, schema: dict | None = None) -> str:
+        """Answer from the cache when the same request was seen before; otherwise ask the model and
+        cache its reply.
+        """
         key = ResponseCache.key(self.model, system, user, schema, self.temperature)
         t0 = time.perf_counter()
         if self.cache is not None:

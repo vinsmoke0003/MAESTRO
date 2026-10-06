@@ -91,6 +91,9 @@ class Route:
     slots: dict = field(default_factory=dict)
 
     def apply(self, slots) -> None:
+        """Copy the router's slot values (query, recipients, ...) onto the extracted slots, marking
+        them resolved.
+        """
         for k, v in self.slots.items():
             if v is None or v == [] or v == "":
                 continue
@@ -100,6 +103,9 @@ class Route:
 
 
 def mentions_drive(text: str) -> bool:
+    """True if the text means Google Drive, not a local disk ('hard drive', 'C drive', 'USB drive'
+    do not count).
+    """
     if not DRIVE.search(text):
         return False
     # "copy it to the C drive" / "my hard drive" are local disks.
@@ -122,6 +128,9 @@ def route(text: str) -> Route | None:
 
 
 def _drive(text: str) -> Route:
+    """Decide which Drive action is wanted: share or delete (both refused later), upload, download,
+    or search.
+    """
     kind = _kind(text)
     name = _name_query(text)
     if SHARE.search(text):
@@ -138,6 +147,9 @@ def _drive(text: str) -> Route:
 
 
 def _kind(text: str) -> str | None:
+    """Find the kind of file mentioned (pdf, folder, document, spreadsheet, presentation, image,
+    zip).
+    """
     m = re.search(r"\b(pdfs?|folders?|docx?|spreadsheets?|sheets?|slides?|presentations?"
                   r"|ppts?|pptx|images?|photos?|pictures?|zip)\b", text, _I)
     if not m:
@@ -149,11 +161,15 @@ def _kind(text: str) -> str | None:
 
 
 def _ext(kind: str | None) -> str | None:
+    """Map a Drive file kind to the matching file extension."""
     return {"pdf": "pdf", "document": "docx", "spreadsheet": "xlsx",
             "presentation": "pptx", "zip": "zip"}.get(kind or "")
 
 
 def _name_query(text: str) -> str | None:
+    """Work out which file name to search for: a quoted name, 'called X', or the remaining
+    meaningful words.
+    """
     quoted = re.search(r"[\"“']([^\"”']{2,60})[\"”']", text)
     if quoted:
         return quoted.group(1).strip()
@@ -176,6 +192,9 @@ def _name_query(text: str) -> str | None:
 
 
 def _gmail(text: str) -> Route | None:
+    """Decide which Gmail action is wanted: calendar reminders, a Gmail draft, reading an email, or
+    searching. A plain 'draft an email' (no 'gmail') is left to the local drafting verb.
+    """
     if CALENDAR.search(text):
         return Route(GMAIL_TO_CALENDAR,
                      {"query": "in:inbox", "quantity": min(_count(text) or CALENDAR_LIMIT,
@@ -227,6 +246,7 @@ def gmail_query(text: str) -> str:
 
 
 def _about(text: str) -> str | None:
+    """Pull the topic out of 'about X' / 'regarding X'."""
     m = re.search(r"\b(?:about|regarding|re:|on the topic of|subject)\s+(?:the\s+|my\s+|our\s+)?"
                   r"([\w .'-]{2,60}?)(?:\s+(?:from|to|today|yesterday|this|last)\b|[?.!]|$)",
                   text, _I)
@@ -257,6 +277,7 @@ def _search_for(text: str) -> str | None:
 
 
 def _count(text: str) -> int | None:
+    """How many emails were asked for ('last 5 emails', 'latest three'), if any."""
     m = re.search(r"\b(?:last|latest|recent|top|first)\s+(\d{1,2})\b|\b(\d{1,2})\s+"
                   r"(?:latest|recent|new|unread)?\s*e-?mails?\b", text, _I)
     if m:

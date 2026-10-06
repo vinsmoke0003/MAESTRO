@@ -19,6 +19,8 @@ from maestro.voice.mouth import RecordingMouth, SilentMouth, SystemMouth, speaka
 
 
 def __getattr__(name: str):
+    """Load the voice endpointer only when asked for, so typing mode works without numpy installed.
+    """
     # The endpointer needs numpy; keep `--text` mode working on a core install.
     if name == "Endpointer":
         from maestro.voice.vad import Endpointer

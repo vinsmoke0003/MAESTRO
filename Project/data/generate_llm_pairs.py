@@ -91,6 +91,9 @@ SCHEMA = {
 
 
 def prompt_for(intent: str, n: int, avoid: list[str]) -> str:
+    """The prompt asking a local model for n new, varied instructions of one intent, avoiding ones
+    it already wrote.
+    """
     brief = INTENT_BRIEF.get(intent, intent)
     lines = [
         f"Write {n} different instructions about {brief}.",
@@ -105,6 +108,9 @@ def prompt_for(intent: str, n: int, avoid: list[str]) -> str:
 
 
 def main() -> int:
+    """Command line: ask a local model for new instruction candidates and save them for human
+    review. None is used until a person accepts it.
+    """
     ap = argparse.ArgumentParser(description="generate LLM instruction candidates")
     ap.add_argument("--n", type=int, default=200, help="candidates to request in total")
     ap.add_argument("--per-call", type=int, default=15)

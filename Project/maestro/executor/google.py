@@ -136,12 +136,16 @@ register(VerbSpec("drive.delete", DriveDeleteArgs, Risk.R3, reversible=False,
 
 
 def _google():
+    """The Google API adapter (or the fake one tests install)."""
     from maestro.google.api import api
 
     return api()
 
 
 def _ids(items: list[Any], limit: int) -> list[str]:
+    """Pull message or file ids out of a list that may hold ids or search results, keeping at most
+    `limit`.
+    """
     out = []
     for x in items:
         if isinstance(x, dict) and x.get("id"):
@@ -152,6 +156,7 @@ def _ids(items: list[Any], limit: int) -> list[str]:
 
 
 def _not_connected(e: Exception) -> Result:
+    """Turn 'Google is not connected' into a failed step whose message says how to connect."""
     return Result(ok=False, detail=str(e))
 
 
@@ -164,11 +169,13 @@ class MailSearchExecutor:
     verb = "gmail.search"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the Gmail search that will be run (read only)."""
         a = MailSearchArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Search Gmail for {a.query!r} (up to {a.limit})",
                               external=["Gmail (read only)"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Search Gmail and return the matching messages' sender, subject, date and snippet."""
         a = MailSearchArgs.model_validate(resolve(args, ctx))
         try:
             found = _google().search_mail(a.query, a.limit)
@@ -178,6 +185,7 @@ class MailSearchExecutor:
                       detail=f"{len(found)} message(s) match {a.query!r}")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Reading changes nothing, so there is nothing to undo."""
         return None
 
 
@@ -185,12 +193,15 @@ class MailReadExecutor:
     verb = "gmail.read"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many emails will be read, noting their content is shown but never obeyed.
+        """
         a = MailReadArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Read up to {a.limit} email(s)",
                               external=["Gmail (read only)"],
                               unknowns=["email content is shown to you, never obeyed"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Read the full text of the found emails. The content is untrusted."""
         a = MailReadArgs.model_validate(resolve(args, ctx))
         ids = _ids(a.messages, a.limit)
         if not ids:
@@ -203,6 +214,7 @@ class MailReadExecutor:
                       detail=f"read {len(mails)} email(s)")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Reading changes nothing, so there is nothing to undo."""
         return None
 
 
@@ -210,6 +222,7 @@ class MailDraftExecutor:
     verb = "gmail.draft"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the draft's recipients and subject, noting it will not be sent."""
         a = MailDraftArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Create a Gmail DRAFT to {', '.join(a.to) or '(no recipient)'} "
@@ -219,6 +232,8 @@ class MailDraftExecutor:
             unknowns=["the draft is NOT sent; you send it yourself in Gmail"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Save the email in the Gmail Drafts folder. It is never sent; the user sends it in Gmail.
+        """
         a = MailDraftArgs.model_validate(resolve(args, ctx))
         try:
             d = _google().create_draft(a.to, a.subject, a.body)
@@ -228,6 +243,7 @@ class MailDraftExecutor:
                       detail="draft saved in Gmail Drafts (not sent)")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the draft that was created."""
         d = result.undo_data or {}
         if d.get("draft_id"):
             _google().delete_draft(d["draft_id"])
@@ -242,6 +258,7 @@ class DriveSearchExecutor:
     verb = "drive.search"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: what will be searched for in Google Drive (read only)."""
         a = DriveSearchArgs.model_validate(resolve(args, ctx))
         what = " ".join(x for x in (a.kind or "", f"named like {a.name!r}" if a.name else "")
                         if x) or "recent files"
@@ -249,6 +266,7 @@ class DriveSearchExecutor:
                               external=["Google Drive (read only)"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Search Google Drive by name or kind and return the matching files."""
         a = DriveSearchArgs.model_validate(resolve(args, ctx))
         try:
             files = _google().search_drive(a.name, a.limit, a.kind)
@@ -258,6 +276,7 @@ class DriveSearchExecutor:
                       detail=f"{len(files)} Drive file(s) found")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Reading changes nothing, so there is nothing to undo."""
         return None
 
 
@@ -265,6 +284,7 @@ class DriveDownloadExecutor:
     verb = "drive.download"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many Drive files will be copied into which local folder."""
         try:
             a = DriveDownloadArgs.model_validate(resolve(args, ctx))
             n = len(_ids(a.files, MAX_TRANSFER))
@@ -277,6 +297,9 @@ class DriveDownloadExecutor:
             unknowns=[] if n else ["which files depends on the Drive search"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Download the found Drive files into a local folder (at most MAX_TRANSFER at once). File
+        names are made safe first.
+        """
         a = DriveDownloadArgs.model_validate(resolve(args, ctx))
         ids = _ids(a.files, MAX_TRANSFER + 1)
         if len(ids) > MAX_TRANSFER:
@@ -298,6 +321,7 @@ class DriveDownloadExecutor:
                       detail=f"downloaded {len(saved)} file(s) into {dest}")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Send the downloaded copies to the Trash."""
         from send2trash import send2trash
 
         for p in (result.undo_data or {}).get("saved", []):
@@ -309,6 +333,8 @@ class DriveUploadExecutor:
     verb = "drive.upload"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many local files will be uploaded to the user's own Drive, and their size.
+        """
         try:
             a = DriveUploadArgs.model_validate(resolve(args, ctx))
             paths = [Path(p).expanduser() for p in a.paths]
@@ -322,6 +348,9 @@ class DriveUploadExecutor:
             unknowns=[] if paths else ["which files depends on the earlier step"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Upload local files to the user's Drive (not shared with anyone), at most MAX_TRANSFER at
+        once.
+        """
         a = DriveUploadArgs.model_validate(resolve(args, ctx))
         paths = [Path(p).expanduser() for p in a.paths]
         if len(paths) > MAX_TRANSFER:
@@ -344,6 +373,9 @@ class DriveUploadExecutor:
                       detail=f"uploaded {len(uploaded)} file(s) to Google Drive")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Move the files this run uploaded to the Drive trash. Only MAESTRO's own uploads can be
+        touched.
+        """
         for f in (result.undo_data or {}).get("uploaded", []):
             _google().trash_own_upload(f["id"])
 
@@ -359,6 +391,7 @@ class FindEventsExecutor:
     verb = "mail.find_events"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: how many emails will be searched for tests, tickets and deadlines."""
         try:
             n = len(FindEventsArgs.model_validate(resolve(args, ctx)).mails)
         except Exception:
@@ -367,6 +400,9 @@ class FindEventsExecutor:
                                       f"{n or 'the'} email(s)")
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Find dated events (exams, flights, trains, deadlines...) in the emails already read.
+        Pure computation, no network.
+        """
         from maestro.google.events import find_events
 
         a = FindEventsArgs.model_validate(resolve(args, ctx))
@@ -376,10 +412,14 @@ class FindEventsExecutor:
                       detail=f"found {len(found)} upcoming item(s) in {len(mails)} email(s)")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Nothing was changed, so there is nothing to undo."""
         return None
 
 
 def _event_body(e: CalendarEventArgs, reminders: list[int]) -> dict:
+    """Build the Google Calendar event: title, time (or all-day), pop-up reminders, a description
+    saying which email it came from, and a hidden tag used to avoid duplicates.
+    """
     from datetime import date, timedelta
 
     if e.all_day:
@@ -404,10 +444,14 @@ def _event_body(e: CalendarEventArgs, reminders: list[int]) -> dict:
 
 
 def _source_key(e: CalendarEventArgs) -> str:
+    """A stable id for an event (email id + start time) so running the request twice does not add
+    it twice.
+    """
     return f"{e.source}:{e.start[:16]}"
 
 
 def _events(a: AddEventsArgs) -> list[CalendarEventArgs]:
+    """Validate each event that came out of the emails, field by field."""
     return [CalendarEventArgs.model_validate(x) for x in a.events if isinstance(x, dict)]
 
 
@@ -415,6 +459,9 @@ class AddEventsExecutor:
     verb = "calendar.add_events"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: list every event that would be added, so the user approves the actual items,
+        not just a count.
+        """
         from maestro.google.events import FoundEvent
 
         try:
@@ -434,6 +481,9 @@ class AddEventsExecutor:
             unknowns=["dates were read from emails: check them against the originals"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Add the events to the user's own calendar with reminders, with no guests, skipping any
+        already added.
+        """
         a = AddEventsArgs.model_validate(resolve(args, ctx))
         events = _events(a)
         if len(events) > MAX_EVENTS:
@@ -458,6 +508,7 @@ class AddEventsExecutor:
                       detail=f"added {len(created)} reminder(s) to Google Calendar{note}")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the events this run added."""
         for e in (result.undo_data or {}).get("created", []):
             _google().calendar_delete_own(e["id"])
 

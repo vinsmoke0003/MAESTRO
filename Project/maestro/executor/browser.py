@@ -126,6 +126,7 @@ class BrowserSession:
     """
 
     def __init__(self, headless: bool = True):
+        """Prepare a browser session; nothing is launched until a page is first needed."""
         self.headless = headless
         self._pw = None
         self._browser = None
@@ -135,6 +136,9 @@ class BrowserSession:
     # -- lifecycle -----------------------------------------------------------
 
     def start(self) -> None:
+        """Launch headless Chromium through Playwright the first time it is needed. Raises
+        NotAvailable with install instructions if Playwright or its browser is missing.
+        """
         if self._page is not None:
             return
         try:
@@ -158,6 +162,7 @@ class BrowserSession:
         self._page = self._browser.new_page()
 
     def close(self) -> None:
+        """Close the browser and stop Playwright, ignoring errors; called when the plan ends."""
         for closer in (lambda: self._browser.close() if self._browser else None,
                        lambda: self._pw.stop() if self._pw else None):
             try:
@@ -168,6 +173,7 @@ class BrowserSession:
 
     @property
     def open(self) -> bool:
+        """True while a browser page is open."""
         return self._page is not None
 
     # -- navigation --------------------------------------------------------
@@ -185,15 +191,18 @@ class BrowserSession:
 
     @property
     def page(self):
+        """The current page, launching the browser first if necessary."""
         self.start()
         return self._page
 
     @property
     def url(self) -> str:
+        """Address of the page currently shown, or '' when nothing is open."""
         return self._page.url if self._page is not None else ""
 
 
 def _same_url(a: str, b: str) -> bool:
+    """True if two URLs are the same apart from case and a trailing slash."""
     norm = lambda u: (u or "").rstrip("/").lower()  # noqa: E731
     return norm(a) == norm(b)
 
@@ -213,6 +222,9 @@ def session_for(ctx: Context, headless: bool = True) -> BrowserSession:
 
 
 def _check_url(url: str) -> str | None:
+    """Return a reason to refuse the URL, or None if it is allowed: only http(s), and never this
+    machine's own local services.
+    """
     if not re.match(r"^https?://", url, re.I):
         return "only http(s) URLs are allowed"
     # Loopback is blocked so a plan cannot poke local services (a database
@@ -225,6 +237,7 @@ def _check_url(url: str) -> str | None:
 
 
 def _fail(e: Exception) -> Result:
+    """Turn an unexpected browser error into a failed step with a short message."""
     return Result(ok=False, detail=f"{type(e).__name__}: {str(e)[:200]}")
 
 
@@ -237,11 +250,13 @@ class OpenExecutor:
     verb = "browser.open"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: the page that will be opened, noting that its content is untrusted."""
         a = OpenArgs.model_validate(resolve(args, ctx))
         return EffectManifest(summary=f"Open {a.url}", external=[a.url],
                               unknowns=["page content is UNTRUSTED"])
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Open the page in the plan's browser session and return its address and title."""
         a = OpenArgs.model_validate(resolve(args, ctx))
         bad = _check_url(a.url)
         if bad:
@@ -258,6 +273,7 @@ class OpenExecutor:
                       detail=f"opened {a.url} — {title!r}", undo_data={"opened": a.url})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Nothing to undo here; the browser closes when the plan ends."""
         pass  # the session is closed at the plan boundary, not per verb
 
 
@@ -265,6 +281,7 @@ class ExtractExecutor:
     verb = "browser.extract"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: what will be read from which page, noting that the text is untrusted."""
         a = ExtractArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Extract {a.selector!r} from {a.url}",
@@ -273,6 +290,9 @@ class ExtractExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Open the page and return the text of the elements matching the selector. The text is
+        untrusted and never reaches the planner.
+        """
         a = ExtractArgs.model_validate(resolve(args, ctx))
         bad = _check_url(a.url)
         if bad:
@@ -289,6 +309,7 @@ class ExtractExecutor:
         return Result(ok=True, output=texts, detail=f"{len(texts)} node(s)", untrusted=True)
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Reading changes nothing, so there is nothing to undo."""
         pass
 
 
@@ -296,6 +317,9 @@ class ClickExecutor:
     verb = "browser.click"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: what will be clicked, warning that a click (e.g. a form submit) cannot be
+        undone.
+        """
         a = ClickArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Click {a.selector!r} on {a.url}",
@@ -304,6 +328,7 @@ class ClickExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Click an element on the page and report whether the page navigated somewhere else."""
         a = ClickArgs.model_validate(resolve(args, ctx))
         bad = _check_url(a.url)
         if bad:
@@ -329,6 +354,7 @@ class ClickExecutor:
                       detail=f"clicked {a.selector}{moved}")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """A click cannot be undone, so this says so instead of pretending."""
         raise NotImplementedError("a click cannot be un-clicked")
 
 
@@ -336,6 +362,9 @@ class FillExecutor:
     verb = "browser.fill"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: which field will be typed into; a field that looks like a password or card
+        field is flagged as refused.
+        """
         a = FillArgs.model_validate(resolve(args, ctx))
         cred = _CRED_RE.search(a.selector)
         return EffectManifest(
@@ -346,6 +375,9 @@ class FillExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Type a value into a form field and read it back to confirm. Password, PIN, card, OTP and
+        ID fields are always refused.
+        """
         a = FillArgs.model_validate(resolve(args, ctx))
         if _CRED_RE.search(a.selector) or _CRED_RE.search(a.value[:120]):
             # Hard block, docs/06 §5. No override flag exists on purpose.
@@ -375,6 +407,7 @@ class FillExecutor:
                       detail=f"filled {a.selector} (verified)")
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Typing into a form cannot be reliably undone, so this says so."""
         raise NotImplementedError("a form entry cannot be reliably un-typed")
 
 
@@ -382,6 +415,8 @@ class DownloadExecutor:
     verb = "browser.download"
 
     def dry_run(self, args: dict, ctx: Context) -> EffectManifest:
+        """Preview: what will be downloaded where; its size and content are unknown until fetched.
+        """
         a = DownloadArgs.model_validate(resolve(args, ctx))
         return EffectManifest(
             summary=f"Download {a.url} -> {a.dest}",
@@ -392,6 +427,7 @@ class DownloadExecutor:
         )
 
     def execute(self, args: dict, ctx: Context) -> Result:
+        """Download a file to the destination and check the whole file was written."""
         import urllib.request
 
         a = DownloadArgs.model_validate(resolve(args, ctx))
@@ -414,6 +450,7 @@ class DownloadExecutor:
                       undo_data={"downloaded": str(dest)})
 
     def undo(self, result: Result, ctx: Context) -> None:
+        """Delete the downloaded file."""
         d = result.undo_data or {}
         if d.get("downloaded"):
             Path(d["downloaded"]).unlink(missing_ok=True)

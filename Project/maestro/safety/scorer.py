@@ -43,6 +43,7 @@ class ActionVerdict:
 
     @property
     def blocked(self) -> bool:
+        """True if this action must never run."""
         return self.risk == Risk.BLOCKED
 
     @property
@@ -65,10 +66,12 @@ class PlanVerdict:
 
     @property
     def blocked(self) -> bool:
+        """True if any action in the plan is blocked; one blocked action blocks the whole plan."""
         return any(a.blocked for a in self.actions)
 
     @property
     def block_reasons(self) -> list[str]:
+        """The reasons given for every blocked action, for the refusal message."""
         return [r for a in self.actions if a.blocked for r in a.reasons]
 
     @property
@@ -96,6 +99,7 @@ class PlanVerdict:
         return None
 
     def action_verdict(self, action_id: str) -> ActionVerdict:
+        """Return the verdict for one action by its id."""
         for a in self.actions:
             if a.action_id == action_id:
                 return a
@@ -127,6 +131,11 @@ def score_action(
     tainted_args: tuple[str, ...] = (),
     bulk_n: int | None = None,
 ) -> ActionVerdict:
+    """Give one action its risk tier using fixed rules, in order: unknown verb or bad arguments are
+    blocked, hard-blocked verbs are blocked, then start from the verb's base risk and only ever
+    raise it for a denied or outside path, an irreversible effect, a bulk file count, a network
+    write, or untrusted data reaching a sensitive argument.
+    """
     reasons: list[str] = []
     rules: list[str] = []
     bits = (reasons, rules)
@@ -278,6 +287,9 @@ def _strip_vars(args: dict, verb: str | None = None) -> dict:
                 placeholders[name] = _placeholder_for(field.annotation)
 
     def walk(v, field_name: str | None = None):
+        """Replace each $variable inside the arguments with a harmless placeholder of the right
+        type, recursing into lists and dicts.
+        """
         if isinstance(v, str) and VAR_RE.match(v):
             return placeholders.get(field_name, [])
         if isinstance(v, dict):
@@ -306,6 +318,9 @@ def _placeholder_for(annotation) -> object:
 
 
 def _iter_paths(value) -> list[str]:
+    """Collect every literal path from an argument value (a string or a list), skipping $variables
+    whose value is not known yet.
+    """
     from maestro.ir.model import VAR_RE
 
     if value is None:
