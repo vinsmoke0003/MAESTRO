@@ -216,6 +216,11 @@ def gmail_query(text: str) -> str:
     topic = _about(text)
     if topic:
         parts.append(f'subject:"{topic}"' if " " in topic else f"subject:{topic}")
+    else:
+        keyword = _search_for(text)
+        if keyword:
+            # A bare term: Gmail matches it in the subject, body and sender.
+            parts.append(f'"{keyword}"' if " " in keyword else keyword)
     if re.search(r"\bstarred\b", text, _I):
         parts.append("is:starred")
     return " ".join(parts) or "in:inbox"
@@ -226,6 +231,29 @@ def _about(text: str) -> str | None:
                   r"([\w .'-]{2,60}?)(?:\s+(?:from|to|today|yesterday|this|last)\b|[?.!]|$)",
                   text, _I)
     return m.group(1).strip(" .'") if m else None
+
+
+_SEARCH_FOR = re.compile(
+    r"\b(?:search|look|find|check|scan)\b[^.?!]*?\bfor\s+(?:any\s+|the\s+|my\s+|e-?mails?\s+"
+    r"(?:about|with|mentioning|containing)\s+)*([\w .'-]{2,40}?)"
+    r"(?:\s+(?:e-?mails?|mails?|messages?))?"
+    r"(?:\s+(?:from|in|on|today|yesterday|this|last|past)\b|[?.!]|$)", _I)
+_NOT_A_KEYWORD = {"me", "my", "mail", "mails", "email", "emails", "e-mail", "e-mails",
+                  "messages", "new", "unread", "anything", "something", "it", "them"}
+
+
+_MENTIONING = re.compile(
+    r"\b(?:mentioning|containing|with\s+the\s+words?)\s+(?:the\s+|my\s+)?([\w .'-]{2,40}?)"
+    r"(?:\s+(?:from|in|on|today|yesterday|this|last|past)\b|[?.!]|$)", _I)
+
+
+def _search_for(text: str) -> str | None:
+    """'search gmail for invoice' -> 'invoice'; 'look for emails about rent' is _about's job."""
+    m = _MENTIONING.search(text) or _SEARCH_FOR.search(text)
+    if not m:
+        return None
+    keyword = m.group(1).strip(" .'")
+    return None if keyword.lower() in _NOT_A_KEYWORD else keyword
 
 
 def _count(text: str) -> int | None:

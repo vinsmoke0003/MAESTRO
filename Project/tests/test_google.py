@@ -180,6 +180,25 @@ def test_gmail_query_is_built_from_plain_english():
     assert "newer_than:7d" in q and 'subject:"project report"' in q
 
 
+@pytest.mark.parametrize("text, expected", [
+    ("search gmail for invoice", "invoice"),
+    ("search my emails for the electricity bill", '"electricity bill"'),
+    ("find emails mentioning internship from Priya", "internship"),
+    ("look for offer letter in my gmail", '"offer letter"'),
+])
+def test_search_for_a_keyword_keeps_the_keyword(text, expected):
+    assert expected in services.gmail_query(text)
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("check my inbox", "in:inbox"),
+    ("search my gmail for new emails", "is:unread"),
+    ("look for unread emails", "is:unread"),
+])
+def test_search_for_nothing_specific_does_not_invent_a_keyword(text, expected):
+    assert services.gmail_query(text) == expected
+
+
 # =========================================================================== #
 # Gmail
 # =========================================================================== #
