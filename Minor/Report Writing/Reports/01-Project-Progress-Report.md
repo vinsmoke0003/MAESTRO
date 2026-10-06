@@ -145,4 +145,4 @@ The Minor is the **research**; the Major is the **outcome**. Every Minor deliver
 
 Headline targets the Major must hit: **Unsafe Execution Rate = 0** on the adversarial suite · Injection Resistance ≥ 90% · Task Success ≥ 70% on P0 categories · fine-tuned 3B vs. frontier comparison · user study n ≥ 15 · public dataset release.
 
-*(All terms used above are defined in [02-Clarifications-and-Key-Terms.md](02-Clarifications-and-Key-Terms.md).)*
+*(All terms used above are defined in [02-Clarifications-and-Key-Terms.md](../Viva-Prep/02-Clarifications-and-Key-Terms.md).)*

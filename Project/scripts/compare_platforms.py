@@ -55,6 +55,7 @@ def load_runs(target: Path) -> dict[str, dict]:
 
 
 def _read_jsonl(path: Path) -> dict[str, dict]:
+    """Read a harness results file, keyed by task id."""
     out = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -68,6 +69,8 @@ def _read_jsonl(path: Path) -> dict[str, dict]:
 
 def compare(left: dict[str, dict], right: dict[str, dict],
             left_name: str, right_name: str) -> tuple[list[dict], dict]:
+    """Compare the two platforms' results task by task: is the Action IR, risk and gate identical?
+    """
     shared = sorted(set(left) & set(right))
     divergences: list[dict] = []
     identical_ir = 0
@@ -130,6 +133,7 @@ the machine, not of the architecture.
 
 
 def render(divergences: list[dict], summary: dict) -> str:
+    """Write the comparison as a Markdown report."""
     if not divergences:
         section = ("**No divergences.** Every task produced a byte-identical "
                    "Action IR, risk tier and gate on both platforms.\n")
@@ -146,6 +150,7 @@ def render(divergences: list[dict], summary: dict) -> str:
 
 
 def main() -> int:
+    """Command line: compare results from two machines and write the cross-platform report."""
     ap = argparse.ArgumentParser(description="cross-platform IR equivalence")
     ap.add_argument("left", help="results dir or run JSON from platform A")
     ap.add_argument("right", help="results dir or run JSON from platform B")

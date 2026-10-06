@@ -52,6 +52,7 @@ REPORTING_HINTS = ("\"system\":", "'system':", "print(", "f\"", "f'", "return {"
 
 
 def offending_lines(path: Path) -> list[tuple[int, str, str]]:
+    """Lines in a file that use operating-system-specific code (comments are ignored)."""
     hits: list[tuple[int, str, str]] = []
     for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         stripped = line.strip()
@@ -67,12 +68,14 @@ def offending_lines(path: Path) -> list[tuple[int, str, str]]:
 
 
 def is_exempt(path: Path) -> bool:
+    """True if a file is allowed to contain OS-specific code (the platform backends)."""
     if path in EXEMPT_FILES:
         return True
     return any(d in path.parents for d in EXEMPT_DIRS)
 
 
 def main() -> int:
+    """Fail if any OS-specific code appears outside the platform backend folders."""
     if not PACKAGE.is_dir():
         print(f"cannot find {PACKAGE}")
         return 2

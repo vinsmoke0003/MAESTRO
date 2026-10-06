@@ -1,6 +1,6 @@
 # Clarifications & Key Terms
 
-**Project MAESTRO** · Group 298 · companion to the [Progress Report](01-Project-Progress-Report.md)
+**Project MAESTRO** · Group 298 · companion to the [Progress Report](../Reports/01-Project-Progress-Report.md)
 
 This document does two jobs: (1) it clarifies the questions people actually ask about this project — including the hard viva questions — and (2) it defines every Major-project term the reports use, so the Minor (research) and the Major (outcome) speak the same language.
 

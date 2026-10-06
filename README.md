@@ -57,25 +57,32 @@ A safety layer that costs nothing should raise suspicion, and the project says s
 
 ```text
 .
-├── Project/        v1.0: the implementation, dataset, benchmark, evaluation, training  <-- run and cite this
-│   ├── maestro/    the package (10,140 lines): ir, safety, planner, nlp, executor, agents, memory, llm, ui
+├── Project/        THE PROJECT: all code, data, evaluation and training  <-- run and cite this
+│   ├── maestro/    the package (~13,300 lines): ir, safety, planner, nlp, executor, agents,
+│   │               memory, llm, voice, google, ui
 │   ├── data/       DeskPlan dataset: generator, validator, seeds, grammar, adversarial cases, splits
 │   ├── eval/       100-task benchmark, 50 adversarial cases, harness, metrics, report, held-out set
 │   ├── training/   intent classifier training, LoRA pipeline, planner evaluation
 │   ├── models/     the trained intent classifier (tracked, so a fresh clone works)
-│   ├── tests/      321 tests across 15 modules
-│   ├── scripts/    platform boundary check, cross-platform diff, UI server, Windows setup
-│   ├── docs/       where each specification section lives in the code, and deliberate departures
+│   ├── tests/      467 tests across 17 modules
+│   ├── scripts/    platform boundary check, cross-platform diff, Windows setup and run
+│   ├── docs/       spec-to-code map, deliberate departures, Google setup
 │   ├── Makefile    every workflow as a target; `make all` rebuilds the repo from source
 │   └── README.md   the developer-facing guide with the full results discussion
-├── Major/          the earlier prototype (v0.3, 2,112 lines, 48 tests) plus its project report
-├── Minor/          minor-project deliverables: progress reports, system design, diaries, viva Q&A, WPR 1-7
+├── Minor/          Minor-project deliverables
+│   ├── Report Writing/   Reports · Diaries · Presentations · Design · Viva-Prep
+│   ├── WPR's/            weekly progress reports 1 to 10
+│   └── Research Papers/  six study papers with a reading guide
+├── Major/          Major-project deliverables (the report); no code
 ├── docs/           the specification: PRD, architecture, tech stack, roadmap, NLP, safety spec, evaluation, team
 │   └── base-papers/  OSWorld, Agent S, Greshake et al. (indirect injection), AgentDojo
+├── GETTING-STARTED.md  clone → venv → install → run, for macOS and Windows
 └── .github/        CI: three operating systems, full rebuild, safety regression gate, IR equivalence check
 ```
 
-`Major/` is kept for the record. It is the minor-project build that proved the safety layer before any LLM was allowed near it. Everything current is in `Project/`.
+**One folder holds code: `Project/`.** `Minor/` and `Major/` hold documents only. The
+early v0.3 prototype that used to live in `Major/` was superseded by `Project/` and removed;
+it is preserved in git under the tag `prototype-v0.3`.
 
 ---
 
@@ -442,7 +449,7 @@ Read these before quoting any number. [`Project/eval/report.py`](Project/eval/re
 | [06-SAFETY-SPEC.md](docs/06-SAFETY-SPEC.md) | The threat model and safety controls. This is the research contribution. |
 | [07-EVALUATION.md](docs/07-EVALUATION.md) | Research questions, metric definitions and targets. |
 | [08-TEAM-DELIVERABLES-RISKS.md](docs/08-TEAM-DELIVERABLES-RISKS.md) | Roles, deliverables and the risk register. |
-| [MAESTRO-Progress-Presentation.pptx](docs/MAESTRO-Progress-Presentation.pptx), [MAESTRO-Architecture.mp4](docs/MAESTRO-Architecture.mp4) | Progress deck and architecture walkthrough. |
+| [MAESTRO-Architecture.mp4](docs/MAESTRO-Architecture.mp4) | Architecture walkthrough video. |
 | [base-papers/](docs/base-papers) | OSWorld, Agent S, Greshake et al. on indirect prompt injection, AgentDojo. |
 
 [`Project/docs/README.md`](Project/docs/README.md) maps every specification section to the module that implements it and the test that pins it, and lists each deliberate departure from the specification.
@@ -451,9 +458,14 @@ Read these before quoting any number. [`Project/eval/report.py`](Project/eval/re
 
 | Location | Contents |
 |---|---|
-| [Major/MAJOR-PROJECT-REPORT.md](Major/MAJOR-PROJECT-REPORT.md), [PDF](Major/MAESTRO-Major-Project-Report.pdf) | The major project report written against the v0.3 prototype. |
-| [Minor/Report Writing/](Minor/Report%20Writing) | Progress report, clarifications and key terms, roadmap, system design with diagram sheet, weekly report, viva questions and answers, and one diary per team member. |
-| [Minor/WPR's/](Minor/WPR's) | Weekly progress reports 1 to 7. |
+| [Minor/Report Writing/Reports/](Minor/Report%20Writing/Reports) | Progress report, report till weeks 1–5, report till weeks 1–10 |
+| [Minor/Report Writing/Presentations/](Minor/Report%20Writing/Presentations) | Progress presentations for Week 6 and Week 10 (`.pptx`, plus PDF) |
+| [Minor/Report Writing/Design/](Minor/Report%20Writing/Design) | System design, diagram sheet, interactive diagram, roadmap |
+| [Minor/Report Writing/Viva-Prep/](Minor/Report%20Writing/Viva-Prep) | Viva questions and answers, clarifications and key terms, the Week 10 review explainer |
+| [Minor/Report Writing/Diaries/](Minor/Report%20Writing/Diaries) | One diary per team member (weeks 1–5 and weeks 1–10) |
+| [Minor/WPR's/](Minor/WPR's) | Weekly progress reports 1 to 10 |
+| [Minor/Research Papers/](Minor/Research%20Papers) | Six study papers with a reading guide |
+| [Major/](Major) | The first Major-project report, written against the v0.3 prototype |
 
 ---
 
@@ -461,8 +473,8 @@ Read these before quoting any number. [`Project/eval/report.py`](Project/eval/re
 
 | Stage | Where | What it established |
 |---|---|---|
-| v0.1 to v0.3 | `Major/` | The Action IR, the closed registry, path policy, deterministic scorer, hash-chained audit, seven file verbs, the orchestrator and the SQLite memory. Built deliberately without an LLM so the constraining layer existed before the thing it constrains. 48 tests. |
-| v1.0 | `Project/` | The full pipeline: 16-intent NLP layer, template and LLM planners with a Critic, 28 verbs across six categories with win32 and darwin backends, taint tracking, consent and budget guards, the web workspace, DeskPlan, the 100-task and adversarial suites, the evaluation matrix, held-out sets, the LoRA pipeline and CI on three operating systems. 321 tests. |
+| v0.1 to v0.3 | git tag `prototype-v0.3` | The Action IR, the closed registry, path policy, deterministic scorer, hash-chained audit, seven file verbs, the orchestrator and the SQLite memory. Built deliberately without an LLM so the constraining layer existed before the thing it constrains. 48 tests. |
+| v1.0 | `Project/` | The full pipeline: 16-intent NLP layer, template and LLM planners with a Critic, 28 verbs across six categories with win32 and darwin backends, taint tracking, consent and budget guards, the web workspace, DeskPlan, the 100-task and adversarial suites, the evaluation matrix, held-out sets, the LoRA pipeline and CI on three operating systems. Then voice, Gmail/Drive/Calendar and 38 verbs. 467 tests. |
 
 ---
 
