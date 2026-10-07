@@ -73,11 +73,20 @@ def read_metric(metric: str, path: str = "~") -> dict:
     raise NotAvailable(f"unsupported metric {metric!r}")
 
 
+OSASCRIPT_TIMEOUT_S = 15
+
+
 def _osascript(script: str) -> str:
-    """Run a short AppleScript and return its output; raise NotAvailable if it fails."""
-    proc = subprocess.run(  # noqa: S603
-        ["osascript", "-e", script], capture_output=True, text=True
-    )
+    """Run a short AppleScript and return its output; raise NotAvailable if it fails or does not
+    finish within OSASCRIPT_TIMEOUT_S (it can wait forever on a headless or locked Mac).
+    """
+    try:
+        proc = subprocess.run(  # noqa: S603
+            ["osascript", "-e", script], capture_output=True, text=True,
+            timeout=OSASCRIPT_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        raise NotAvailable(f"osascript did not respond within {OSASCRIPT_TIMEOUT_S} s") from None
     if proc.returncode != 0:
         raise NotAvailable(f"osascript failed: {proc.stderr.strip()}")
     return proc.stdout.strip()
