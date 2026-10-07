@@ -731,6 +731,16 @@ def voice_http(http, monkeypatch):
     return http
 
 
+def _until_audio(cap, seconds=0.45, timeout=10.0):
+    """Wait for `seconds` of recorded AUDIO (frames), not wall-clock time: a fixed sleep can
+    leave less than the 0.3 s minimum on a slow runner, which is rejected as "No audio".
+    """
+    t0 = time.time()
+    while cap.elapsed < seconds and time.time() - t0 < timeout:
+        time.sleep(0.005)
+    assert cap.elapsed >= seconds, f"only {cap.elapsed:.2f} s of audio was recorded"
+
+
 def _voice_settle(http, timeout=5.0):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -766,7 +776,7 @@ def test_voice_flow_over_http_returns_text_and_runs_nothing(voice_http, aliased)
     status, out = voice_http.post("/api/voice/start", voice_http.token)
     assert status == 202 and out["state"] in ("starting", "listening")
     assert voice_http.post("/api/voice/start", voice_http.token)[0] == 409
-    time.sleep(0.15)
+    _until_audio(voice_http.ws.voice)            # enough recorded audio, however slow the runner
     assert voice_http.post("/api/voice/stop", voice_http.token)[0] == 202
     st = _voice_settle(voice_http)
     assert st["state"] == "transcript_ready"
@@ -783,7 +793,10 @@ def test_voice_flow_over_http_returns_text_and_runs_nothing(voice_http, aliased)
 
 def test_closing_the_workspace_releases_a_recording_microphone(voice_http):
     voice_http.post("/api/voice/start", voice_http.token)
-    time.sleep(0.1)
+    t0 = time.time()
+    while voice_http.mic["opened"] == 0 and time.time() - t0 < 10:
+        time.sleep(0.005)                         # the microphone really is open
+    assert voice_http.mic["opened"] == 1
     voice_http.ws.voice.shutdown()
     assert voice_http.mic["closed"] == voice_http.mic["opened"] == 1
 

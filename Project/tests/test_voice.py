@@ -551,9 +551,7 @@ def test_capture_records_until_stop_then_transcribes_in_memory(fake_voice, tmp_p
     before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
     cap = fake_voice.make()
     assert cap.start()[0] == 202
-    _until(cap, "listening")
-    import time
-    time.sleep(0.1)
+    _recorded(cap)
     assert cap.status()["level_pct"] > 0
     assert cap.start()[0] == 409                        # only one recording at a time
     assert cap.stop()[0] == 202
@@ -588,9 +586,7 @@ def test_capture_empty_and_silent_recordings_fail_politely(fake_voice):
 
     cap = fake_voice.make(heard=Heard("", 0.0, "voice"))
     cap.start()
-    _until(cap, "listening")
-    import time
-    time.sleep(0.1)
+    _recorded(cap)
     cap.stop()
     st = _settle(cap)
     assert st["state"] == "failed" and "No speech" in st["message"]
@@ -598,12 +594,9 @@ def test_capture_empty_and_silent_recordings_fail_politely(fake_voice):
 
 
 def test_capture_low_confidence_is_flagged_not_hidden(fake_voice):
-    import time
-
     cap = fake_voice.make(heard=Heard("muve the pdf", 0.2, "voice"))
     cap.start()
-    _until(cap, "listening")
-    time.sleep(0.1)
+    _recorded(cap)
     cap.stop()
     st = _settle(cap)
     assert st["state"] == "transcript_ready" and st["low_confidence"] is True
@@ -628,12 +621,9 @@ def test_capture_microphone_failures_are_generic(fake_voice, error, expected):
 
 
 def test_capture_transcription_failure_is_generic(fake_voice):
-    import time
-
     cap = fake_voice.make(heard=RuntimeError("/Users/me/.cache/whisper model.bin corrupt"))
     cap.start()
-    _until(cap, "listening")
-    time.sleep(0.1)
+    _recorded(cap)
     cap.stop()
     st = _settle(cap)
     assert st["state"] == "failed" and "Speech recognition failed" in st["message"]
@@ -641,8 +631,6 @@ def test_capture_transcription_failure_is_generic(fake_voice):
 
 
 def test_capture_discard_clears_and_releases(fake_voice):
-    import time
-
     cap = fake_voice.make()
     cap.start()
     _until(cap, "listening")
@@ -652,8 +640,7 @@ def test_capture_discard_clears_and_releases(fake_voice):
     assert fake_voice.transcribed == []                 # never transcribed
 
     cap.start()
-    _until(cap, "listening")
-    time.sleep(0.1)
+    _recorded(cap)
     cap.stop()
     assert _settle(cap)["state"] == "transcript_ready"
     st = cap.discard()[1]
@@ -757,13 +744,18 @@ def gated(fake_voice):
     reg.cap.shutdown()
 
 
-def _recorded(cap, seconds=0.4):
+def _recorded(cap, seconds=0.45):
+    """Wait until the capture holds `seconds` of recorded AUDIO (its frame count), not of
+    wall-clock time: on a slow runner far fewer fake frames arrive per second, and a fixed
+    sleep can leave less than the 0.3 s minimum, which is correctly rejected as "No audio".
+    """
     import time
 
     _until(cap, "listening")
     t0 = time.time()
-    while cap.status()["elapsed_s"] < seconds and time.time() - t0 < 5:
-        time.sleep(0.01)
+    while cap.elapsed < seconds and time.time() - t0 < 10:
+        time.sleep(0.005)
+    assert cap.elapsed >= seconds, f"only {cap.elapsed:.2f} s of audio was recorded"
 
 
 def test_discard_then_immediate_start_never_opens_a_second_microphone(gated):
