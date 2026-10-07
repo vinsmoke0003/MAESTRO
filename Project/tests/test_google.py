@@ -663,3 +663,147 @@ def test_voice_adds_reminders_after_a_spoken_yes(sandbox, google):
     assert agent.turns[0].status == "completed"
     assert len(google.events) == 2
     assert "Added 2 reminders to your calendar" in mouth.transcript
+
+
+# =========================================================================== #
+# read-only integration status (the Connections page)
+# =========================================================================== #
+
+ALL_SCOPES = [f"https://www.googleapis.com/auth/{s}" for s in
+              ("gmail.readonly", "gmail.compose", "drive.readonly", "drive.file",
+               "calendar.events")]
+SECRETS = ("ACCESS-TOKEN-VALUE", "REFRESH-TOKEN-VALUE", "CLIENT-SECRET-VALUE")
+
+
+@pytest.fixture
+def gstatus(monkeypatch):
+    """integration_status() with libraries present, no network, no token refresh."""
+    import socket
+    import urllib.request
+
+    from maestro.google import auth
+
+    def no_network(*a, **k):
+        raise AssertionError("integration status must not touch the network")
+
+    monkeypatch.setattr(socket, "create_connection", no_network)
+    monkeypatch.setattr(urllib.request, "urlopen", no_network)
+    monkeypatch.setattr(auth, "credentials", no_network)          # would refresh
+    monkeypatch.setattr(auth, "_libraries_installed", lambda: True)
+    monkeypatch.delenv("MAESTRO_GOOGLE_CLIENT_SECRET", raising=False)
+    return auth
+
+
+def _client(auth) -> None:
+    auth.google_dir()
+    auth.client_secret_path().write_text(
+        '{"installed": {"client_id": "id", "client_secret": "CLIENT-SECRET-VALUE"}}')
+
+
+def _token(auth, scopes=ALL_SCOPES, *, refresh=True, expiry="2099-01-01T00:00:00Z",
+           raw=None) -> None:
+    import json
+
+    auth.google_dir()
+    data = {"token": "ACCESS-TOKEN-VALUE", "client_secret": "CLIENT-SECRET-VALUE",
+            "scopes": scopes, "expiry": expiry}
+    if refresh:
+        data["refresh_token"] = "REFRESH-TOKEN-VALUE"
+    auth.token_path().write_text(raw if raw is not None else json.dumps(data))
+
+
+def test_status_with_nothing_is_setup_required_and_creates_nothing(gstatus):
+    st = gstatus.integration_status()
+    assert st["state"] == "setup_required"
+    assert not st["client_configured"] and not st["token_present"]
+    assert all(s["state"] == "setup_required" for s in st["services"].values())
+    assert not gstatus.google_home().exists()                    # read-only: no folder
+
+
+def test_path_helpers_do_not_create_the_folder(gstatus):
+    gstatus.client_secret_path()
+    gstatus.token_path()
+    gstatus.status()
+    assert not gstatus.google_home().exists()
+
+
+def test_saving_a_token_still_creates_the_folder(gstatus):
+    class Creds:
+        def to_json(self):
+            return "{}"
+
+    gstatus._save(Creds())
+    assert gstatus.token_path().is_file()
+
+
+def test_status_with_client_only_is_connect_required(gstatus):
+    _client(gstatus)
+    st = gstatus.integration_status()
+    assert st["state"] == "connect_required" and st["client_configured"]
+    assert all(s["state"] == "connect_required" for s in st["services"].values())
+
+
+def test_status_with_full_token_is_connected(gstatus):
+    _client(gstatus)
+    _token(gstatus)
+    st = gstatus.integration_status()
+    assert st["state"] == "connected"
+    assert st["token_expiry"] == "2099-01-01T00:00:00Z" and st["token_expired"] is False
+    for name in ("gmail", "drive", "calendar"):
+        assert st["services"][name] == {**st["services"][name], "state": "connected",
+                                        "permission": True}
+
+
+def test_expired_access_token_with_refresh_is_still_connected(gstatus):
+    """Access tokens expire hourly; a refresh token renews them on use."""
+    _token(gstatus, expiry="2000-01-01T00:00:00Z")
+    st = gstatus.integration_status()
+    assert st["token_expired"] is True and st["token_refreshable"] is True
+    assert st["state"] == "connected"
+
+
+@pytest.mark.parametrize("missing, service", [
+    ("calendar.events", "calendar"), ("gmail.compose", "gmail"), ("drive.file", "drive")])
+def test_each_service_reports_its_own_missing_permission(gstatus, missing, service):
+    _token(gstatus, [s for s in ALL_SCOPES if not s.endswith(missing)])
+    st = gstatus.integration_status()
+    assert st["state"] == "reconnect_required"
+    assert st["message"] == "Some permissions were not granted."
+    for name, svc in st["services"].items():
+        if name == service:
+            assert svc["state"] == "permission_missing" and svc["permission"] is False
+        else:
+            assert svc["state"] == "connected" and svc["permission"] is True
+
+
+def test_expired_token_without_refresh_is_reconnect_required(gstatus):
+    _token(gstatus, refresh=False, expiry="2000-01-01T00:00:00Z")
+    st = gstatus.integration_status()
+    assert st["state"] == "reconnect_required"
+    assert all(s["state"] == "reconnect_required" for s in st["services"].values())
+
+
+def test_unreadable_token_is_reconnect_required(gstatus):
+    _token(gstatus, raw="{not json")
+    st = gstatus.integration_status()
+    assert st["state"] == "reconnect_required" and st["token_readable"] is False
+
+
+def test_missing_libraries_is_setup_required(gstatus, monkeypatch):
+    _client(gstatus)
+    _token(gstatus)
+    monkeypatch.setattr(gstatus, "_libraries_installed", lambda: False)
+    st = gstatus.integration_status()
+    assert st["state"] == "setup_required" and "pip install" in st["message"]
+
+
+def test_status_never_contains_secrets_or_paths(gstatus, tmp_path):
+    import json
+
+    _client(gstatus)
+    _token(gstatus)
+    out = json.dumps(gstatus.integration_status())
+    for secret in SECRETS:
+        assert secret not in out
+    assert str(tmp_path) not in out and "client_secret.json" not in out
+    assert "token.json" not in out

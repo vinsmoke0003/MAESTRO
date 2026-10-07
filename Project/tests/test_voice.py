@@ -435,3 +435,420 @@ def test_found_files_are_listed_on_screen_and_read_without_approval(sandbox, wor
     assert any(line.strip().endswith("paper00.pdf") for line in shown)
     assert sum(1 for line in shown if ".pdf" in line and line.strip()[0].isdigit()) == 30
     assert "I found 30 files" in mouth.transcript
+
+
+# =========================================================================== #
+# GUI push-to-talk capture (fake microphone, fake transcriber)
+# =========================================================================== #
+
+class _Mic:
+    """A fake MicEars: frames() is a generator whose `finally` marks the mic released."""
+
+    def __init__(self, reg, *, heard=None, fail=None, frames=None, level=0.05):
+        self.reg, self.fail, self.limit, self.level = reg, fail, frames, level
+        self.transcriber = self
+        self.heard = heard if heard is not None else Heard("move the pdfs to documents",
+                                                           0.9, "voice")
+
+    def frames(self):
+        import time
+
+        import numpy as np
+
+        from maestro.voice.vad import FRAME_SAMPLES
+
+        self.reg.opened += 1
+        try:
+            if self.fail:
+                raise self.fail
+            n = 0
+            while True:
+                if self.limit is not None and n >= self.limit:
+                    time.sleep(0.01)
+                    yield None
+                    continue
+                n += 1
+                time.sleep(0.002)
+                wave = np.where(np.arange(FRAME_SAMPLES) % 2, self.level, -self.level)
+                yield wave.astype("float32")                # rms() ignores a DC offset
+        finally:
+            self.reg.closed += 1
+
+    def transcribe(self, audio):
+        self.reg.transcribed.append(int(audio.size))
+        if isinstance(self.heard, Exception):
+            raise self.heard
+        return self.heard
+
+
+@pytest.fixture
+def fake_voice(monkeypatch):
+    """No real microphone, no Whisper model, no network."""
+    import socket
+    import types
+
+    from maestro.voice import capture, ears
+
+    def forbidden(*a, **k):
+        raise AssertionError("real microphone / speech model / network used in a test")
+
+    monkeypatch.setattr(ears.MicEars, "frames", forbidden)
+    monkeypatch.setattr(ears.MicEars, "_sd", staticmethod(forbidden))
+    monkeypatch.setattr(ears.WhisperTranscriber, "load", forbidden)
+    real_create = socket.create_connection
+    monkeypatch.setattr(socket, "create_connection",
+                        lambda a, *x, **k: real_create(a, *x, **k)
+                        if a[0] in ("127.0.0.1", "localhost") else forbidden())
+    monkeypatch.setattr(capture, "_missing_deps", lambda: [])
+    monkeypatch.setattr(capture.VoiceCapture, "_describe_device", lambda self: "Fake Mic")
+    reg = types.SimpleNamespace(opened=0, closed=0, transcribed=[])
+
+    def make(**kw):
+        return capture.VoiceCapture(ears_factory=lambda: _Mic(reg, **{
+            k: v for k, v in kw.items() if k != "max_seconds"}),
+            **({"max_seconds": kw["max_seconds"]} if "max_seconds" in kw else {}))
+
+    reg.make = make
+    return reg
+
+
+def _settle(cap, timeout=5.0):
+    import time
+
+    from maestro.voice.capture import BUSY
+
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        st = cap.status()
+        if st["state"] not in BUSY:
+            return st
+        time.sleep(0.01)
+    raise AssertionError("capture did not settle")
+
+
+def _until(cap, state, timeout=5.0):
+    import time
+
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if cap.status()["state"] == state:
+            return
+        time.sleep(0.005)
+    raise AssertionError(f"never reached {state}")
+
+
+def test_capture_status_never_opens_the_microphone(fake_voice):
+    cap = fake_voice.make()
+    for _ in range(3):
+        st = cap.status()
+    assert st["state"] == "idle" and st["device"] == "Fake Mic" and st["available"]
+    assert fake_voice.opened == 0
+
+
+def test_capture_records_until_stop_then_transcribes_in_memory(fake_voice, tmp_path):
+    import json
+
+    before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
+    cap = fake_voice.make()
+    assert cap.start()[0] == 202
+    _until(cap, "listening")
+    import time
+    time.sleep(0.1)
+    assert cap.status()["level_pct"] > 0
+    assert cap.start()[0] == 409                        # only one recording at a time
+    assert cap.stop()[0] == 202
+    st = _settle(cap)
+    assert st["state"] == "transcript_ready"
+    assert st["transcript"] == "move the pdfs to documents" and st["confidence"] == 0.9
+    assert st["low_confidence"] is False
+    assert fake_voice.opened == 1 and fake_voice.closed == 1        # mic released
+    assert fake_voice.transcribed and fake_voice.transcribed[0] > 0
+    text = json.dumps(st)
+    assert len(text) < 1500 and "audio" not in st                   # no samples returned
+    assert sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*")) == before  # no files
+    assert cap.stop()[0] == 409                                     # stop when not recording
+
+
+def test_capture_time_limit_releases_the_microphone(fake_voice):
+    cap = fake_voice.make(max_seconds=0.3)
+    cap.start()
+    st = _settle(cap)
+    assert st["state"] == "transcript_ready" and "limit" in st["message"]
+    assert fake_voice.closed == 1
+
+
+def test_capture_empty_and_silent_recordings_fail_politely(fake_voice):
+    cap = fake_voice.make(frames=2)                      # 60 ms: a click, not speech
+    cap.start()
+    _until(cap, "listening")
+    cap.stop()
+    st = _settle(cap)
+    assert st["state"] == "failed" and "No audio" in st["message"]
+    assert fake_voice.closed == 1 and fake_voice.transcribed == []
+
+    cap = fake_voice.make(heard=Heard("", 0.0, "voice"))
+    cap.start()
+    _until(cap, "listening")
+    import time
+    time.sleep(0.1)
+    cap.stop()
+    st = _settle(cap)
+    assert st["state"] == "failed" and "No speech" in st["message"]
+    assert st["transcript"] == ""
+
+
+def test_capture_low_confidence_is_flagged_not_hidden(fake_voice):
+    import time
+
+    cap = fake_voice.make(heard=Heard("muve the pdf", 0.2, "voice"))
+    cap.start()
+    _until(cap, "listening")
+    time.sleep(0.1)
+    cap.stop()
+    st = _settle(cap)
+    assert st["state"] == "transcript_ready" and st["low_confidence"] is True
+    assert "Low confidence" in st["message"] and st["transcript"] == "muve the pdf"
+
+
+@pytest.mark.parametrize("error, expected", [
+    ("the microphone did not start within 5 s. On macOS ...", "Allow microphone access"),
+    ("could not open the microphone: PortAudioError -9986 /dev/cu.mic", "No microphone"),
+    ("microphone access needs sounddevice: pip install", "voice extras"),
+])
+def test_capture_microphone_failures_are_generic(fake_voice, error, expected):
+    from maestro.voice import VoiceUnavailable
+
+    cap = fake_voice.make(fail=VoiceUnavailable(error))
+    cap.start()
+    st = _settle(cap)
+    assert st["state"] == "failed" and expected in st["message"]
+    for leak in ("PortAudio", "/dev", "-9986", "within 5 s"):
+        assert leak not in st["message"]
+    assert fake_voice.closed == 1
+
+
+def test_capture_transcription_failure_is_generic(fake_voice):
+    import time
+
+    cap = fake_voice.make(heard=RuntimeError("/Users/me/.cache/whisper model.bin corrupt"))
+    cap.start()
+    _until(cap, "listening")
+    time.sleep(0.1)
+    cap.stop()
+    st = _settle(cap)
+    assert st["state"] == "failed" and "Speech recognition failed" in st["message"]
+    assert "/Users" not in st["message"] and "corrupt" not in st["message"]
+
+
+def test_capture_discard_clears_and_releases(fake_voice):
+    import time
+
+    cap = fake_voice.make()
+    cap.start()
+    _until(cap, "listening")
+    assert cap.discard()[1]["state"] in ("stopping", "idle")    # discard while recording
+    _until(cap, "idle")
+    assert fake_voice.closed == 1
+    assert fake_voice.transcribed == []                 # never transcribed
+
+    cap.start()
+    _until(cap, "listening")
+    time.sleep(0.1)
+    cap.stop()
+    assert _settle(cap)["state"] == "transcript_ready"
+    st = cap.discard()[1]
+    assert st["state"] == "idle" and st["transcript"] == "" and st["confidence"] is None
+
+
+def test_capture_shutdown_during_recording_releases_the_microphone(fake_voice):
+    cap = fake_voice.make()
+    cap.start()
+    _until(cap, "listening")
+    cap.shutdown()
+    assert fake_voice.closed == 1 and cap.status()["state"] == "idle"
+
+
+def test_capture_reports_unavailable_without_voice_libraries(fake_voice, monkeypatch):
+    from maestro.voice import capture
+
+    monkeypatch.setattr(capture, "_missing_deps", lambda: ["faster-whisper"])
+    cap = fake_voice.make()
+    st = cap.status()
+    assert st["state"] == "unavailable" and st["missing"] == ["faster-whisper"]
+    status, out = cap.start()
+    assert status == 409 and "pip install" in out["error"] and fake_voice.opened == 0
+
+
+def test_missing_libraries_override_a_previous_failure(fake_voice, monkeypatch):
+    from maestro.voice import VoiceUnavailable, capture
+
+    cap = fake_voice.make(fail=VoiceUnavailable("could not open the microphone: x"))
+    cap.start()
+    assert _settle(cap)["state"] == "failed"
+    monkeypatch.setattr(capture, "_missing_deps", lambda: ["sounddevice"])
+    st = cap.status()
+    assert st["state"] == "unavailable" and "pip install" in st["message"]
+
+
+
+# --------------------------------------------------------------------------- #
+# discard while a worker is still running: never two workers
+# --------------------------------------------------------------------------- #
+
+class _GatedMic:
+    """Deterministic fake: releasing the mic waits on `release`, transcription waits on
+    `transcribe_gate`; counts live microphones and concurrent transcriptions (with peaks).
+    """
+
+    def __init__(self, reg, heard=None):
+        self.reg = reg
+        self.transcriber = self
+        self.heard = heard or Heard("delete my downloads", 0.95, "voice")
+
+    def frames(self):
+        import numpy as np
+
+        from maestro.voice.vad import FRAME_SAMPLES
+
+        with self.reg.lock:
+            self.reg.mics += 1
+            self.reg.peak_mics = max(self.reg.peak_mics, self.reg.mics)
+            self.reg.opened += 1
+        try:
+            while True:
+                yield np.where(np.arange(FRAME_SAMPLES) % 2, 0.05, -0.05).astype("float32")
+                self.reg.frame_tick.wait(0.002)
+        finally:
+            self.reg.release.wait(5)                 # a slow microphone release
+            with self.reg.lock:
+                self.reg.mics -= 1
+
+    def transcribe(self, audio):
+        with self.reg.lock:
+            self.reg.tx += 1
+            self.reg.peak_tx = max(self.reg.peak_tx, self.reg.tx)
+        try:
+            self.reg.transcribe_gate.wait(5)
+            if isinstance(self.heard, Exception):
+                raise self.heard
+            return self.heard
+        finally:
+            with self.reg.lock:
+                self.reg.tx -= 1
+
+
+@pytest.fixture
+def gated(fake_voice):
+    import threading
+    import types
+
+    from maestro.voice import capture
+
+    reg = types.SimpleNamespace(lock=threading.Lock(), mics=0, peak_mics=0, opened=0, tx=0,
+                                peak_tx=0, release=threading.Event(),
+                                transcribe_gate=threading.Event(), frame_tick=threading.Event(),
+                                heard=None)
+    reg.release.set()
+    reg.transcribe_gate.set()
+    reg.cap = capture.VoiceCapture(ears_factory=lambda: _GatedMic(reg, reg.heard))
+    yield reg
+    reg.release.set()
+    reg.transcribe_gate.set()
+    reg.cap.shutdown()
+
+
+def _recorded(cap, seconds=0.4):
+    import time
+
+    _until(cap, "listening")
+    t0 = time.time()
+    while cap.status()["elapsed_s"] < seconds and time.time() - t0 < 5:
+        time.sleep(0.01)
+
+
+def test_discard_then_immediate_start_never_opens_a_second_microphone(gated):
+    cap = gated.cap
+    assert cap.start()[0] == 202
+    _until(cap, "listening")
+    gated.release.clear()                           # the mic will be slow to let go
+    st = cap.discard()[1]
+    assert st["state"] == "stopping" and st["transcript"] == ""
+    for _ in range(20):                             # hammer Start during cleanup
+        status, out = cap.start()
+        assert status == 409 and "stopping" in out["error"].lower()
+    assert cap.status()["state"] == "stopping"
+    assert gated.mics == 1 and gated.opened == 1
+    gated.release.set()                             # now the mic is released
+    _until(cap, "idle")
+    assert gated.mics == 0
+    assert cap.start()[0] == 202                    # and Start works again
+    _until(cap, "listening")
+    assert gated.peak_mics == 1 and gated.opened == 2
+
+
+def test_start_is_refused_while_a_worker_is_alive_even_if_state_looks_idle(gated):
+    cap = gated.cap
+    cap.start()
+    _until(cap, "listening")
+    gated.release.clear()
+    cap.discard()
+    with cap._lock:
+        cap.state = "idle"                          # simulate a wrong public state
+    assert cap.start()[0] == 409
+    assert gated.opened == 1 and gated.peak_mics == 1
+    gated.release.set()
+    import time
+    t0 = time.time()
+    while cap._worker_active and time.time() - t0 < 5:
+        time.sleep(0.01)
+    assert cap.start()[0] == 202
+
+
+@pytest.mark.parametrize("outcome", ["text", "error"])
+def test_discarded_transcription_never_publishes_and_never_overlaps(gated, outcome):
+    if outcome == "error":
+        gated.heard = RuntimeError("/Users/me/model.bin broke")
+        gated.cap._factory = lambda: _GatedMic(gated, gated.heard)
+    cap = gated.cap
+    cap.start()
+    _recorded(cap)
+    gated.transcribe_gate.clear()                   # transcription will block
+    cap.stop()
+    _until(cap, "transcribing")
+    st = cap.discard()[1]
+    assert st["state"] == "stopping" and st["transcript"] == "" and st["confidence"] is None
+    assert cap.start()[0] == 409                    # no second transcription can begin
+    assert gated.tx == 1
+    gated.transcribe_gate.set()                     # the old transcription now returns...
+    _until(cap, "idle")
+    st = cap.status()
+    assert st["state"] == "idle" and st["transcript"] == "" and st["message"] == ""
+    assert st["confidence"] is None                 # ...and its result was never shown
+    assert cap.start()[0] == 202
+    _recorded(cap)
+    cap.stop()
+    assert _settle(cap)["state"] in ("transcript_ready", "failed")
+    assert gated.peak_tx == 1 and gated.peak_mics == 1
+
+
+def test_discarding_a_finished_transcript_is_still_immediate(gated):
+    cap = gated.cap
+    cap.start()
+    _recorded(cap)
+    cap.stop()
+    assert _settle(cap)["state"] == "transcript_ready"
+    st = cap.discard()[1]
+    assert st["state"] == "idle" and st["transcript"] == ""
+    assert cap.start()[0] == 202
+
+
+def test_shutdown_waits_for_the_microphone_release(gated):
+    import threading
+
+    cap = gated.cap
+    cap.start()
+    _until(cap, "listening")
+    gated.release.clear()
+    threading.Timer(0.2, gated.release.set).start()   # released while shutdown waits
+    cap.shutdown()
+    assert gated.mics == 0 and cap.status()["state"] == "idle"

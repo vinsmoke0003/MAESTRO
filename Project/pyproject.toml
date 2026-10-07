@@ -37,6 +37,10 @@ voice = ["sounddevice>=0.4", "numpy>=1.24", "faster-whisper>=1.0"]
 # Gmail + Google Drive (`maestro google connect`). Free for personal use.
 google = ["google-api-python-client>=2.100", "google-auth-oauthlib>=1.2",
           "google-auth-httplib2>=0.2"]
+# `maestro desktop`: the workspace in a native window. Terminal use never needs it.
+desktop = ["pywebview>=5"]
+# Building the portable Windows app (scripts/build_windows.ps1). Never needed to run MAESTRO.
+packaging = ["pyinstaller>=6"]
 # PERSON entities. The rule extractor works without it.
 spacy = ["spacy>=3.7"]
 # LoRA fine-tuning. Needs a GPU; see training/train_lora.py --check.

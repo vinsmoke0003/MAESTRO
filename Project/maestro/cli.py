@@ -693,6 +693,13 @@ def cmd_ui(args: argparse.Namespace) -> int:
     return serve(args.port, open_browser=not args.no_browser)
 
 
+def cmd_desktop(args: argparse.Namespace) -> int:
+    """The same workspace in a native window (needs the desktop extra)."""
+    from maestro import desktop
+
+    return desktop.run(port=args.port, debug=args.debug)
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     """What will actually work on THIS machine, feature by feature.
 
@@ -1013,6 +1020,14 @@ def build_parser() -> argparse.ArgumentParser:
     ui.add_argument("--port", type=int, default=8765)
     ui.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
     ui.set_defaults(func=cmd_ui)
+
+    dk = sub.add_parser("desktop", help="the workspace in a native window (pip install -e "
+                                        "\".[desktop]\")")
+    dk.add_argument("--port", type=int, default=0,
+                    help="local port (default: any free port on 127.0.0.1)")
+    dk.add_argument("--debug", action="store_true",
+                    help="enable the window's developer tools (off by default)")
+    dk.set_defaults(func=cmd_desktop)
 
     return p
 

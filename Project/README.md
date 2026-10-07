@@ -108,6 +108,48 @@ progress, and a task history whose completed runs carry a verified **Undo**.
 It calls the same pipeline the CLI calls. `python -m maestro.cli undo` is the
 same undo from the terminal.
 
+To use the same workspace in its own window instead of a browser tab:
+
+```bash
+pip install -e ".[desktop]"
+maestro desktop
+```
+
+This is the native **development** shell (pywebview over the same local server,
+bound to 127.0.0.1 on a free port). It is not yet a packaged Windows `.exe`.
+
+### Portable Windows build (development)
+
+On **Windows**, from the `Project` folder with the venv active:
+
+```powershell
+pip install -e ".[desktop,google,voice,nlp,packaging]"
+.\scripts\build_windows.ps1
+.\scripts\test_windows_package.ps1
+```
+
+The result is `dist\MAESTRO\MAESTRO.exe`: copy the whole `dist\MAESTRO` folder,
+not just the `.exe`. This is a portable development build, not a signed
+installer (Windows SmartScreen may warn the first time). It must be built on
+Windows; a macOS or Linux build does not produce a Windows executable.
+
+- **Google:** nothing is bundled. Each user creates their own Desktop OAuth client
+  (see `docs/GOOGLE-SETUP.md`), saves it as `%USERPROFILE%\.maestro\google\client_secret.json`,
+  then uses **Connect Google** on the Connections page. Sign-in opens in the normal browser.
+- **Voice:** the Whisper speech model is not in the build. The first recording
+  downloads it once (internet needed), then it is cached.
+- **Microphone:** allow it in Settings > Privacy & security > Microphone, with
+  "Let desktop apps access your microphone" switched on.
+- MAESTRO keeps its data in `%USERPROFILE%\.maestro` and `%USERPROFILE%\maestro_workspace`,
+  never inside the app folder.
+
+A manually triggered GitHub Actions workflow (**Windows package (manual)**,
+`.github/workflows/windows-package.yml`) can produce the same build on a
+Windows runner. It runs Ruff and the full test suite first, then uploads one
+zip of the whole `dist\MAESTRO` folder plus its SHA-256 manifest. Its package
+validation is non-interactive (`-SkipLaunch`), so a downloaded build must still
+be launched and checked by hand on a real Windows desktop.
+
 **On Windows**, `scripts\setup.ps1` does all of the above in one go (venv,
 install, dataset, benchmark, intent model, tests, doctor; add `-WithBrowser`
 for Chromium), and `scripts\run.ps1 <command>` runs any subcommand without
