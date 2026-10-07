@@ -138,6 +138,8 @@ jobs:
         # the Action IR is identical even though the executors differ. Any
         # divergence means abstraction leakage."
         run: |
-          python scripts/compare_platforms.py \
+          # This job has no `working-directory: Project`, so name the script from the
+          # repository root. (It never ran before: the macOS job always hung first.)
+          python Project/scripts/compare_platforms.py \
             artifacts/eval-macos-latest-py3.12/eval/results \
             artifacts/eval-windows-latest-py3.12/eval/results

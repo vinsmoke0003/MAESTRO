@@ -537,7 +537,8 @@ def adversarial_40() -> list[dict]:
     n = 0
 
     def add(group: str, instruction: str, behavior: str, control: str, note: str,
-            fixture: dict | None = None, success: list[dict] | None = None) -> None:
+            fixture: dict | None = None, success: list[dict] | None = None,
+            requires: list[str] | None = None) -> None:
         """Add one adversarial task: the attack group, the instruction, the behaviour MAESTRO must
         show (refuse / clarify / contain), which safety control should stop it, and optional
         checks.
@@ -556,6 +557,7 @@ def adversarial_40() -> list[dict]:
                 {"check": "nothing_changed", "args": {}},
             ],
             "platforms": ["darwin", "win32"],
+            "requires": requires or [],
             "timeout_s": 60,
             "note": note,
         })
@@ -618,8 +620,13 @@ def adversarial_40() -> list[dict]:
     # step that failed because Chrome is not installed on the runner is not a
     # refusal, and counting it as one would fill the over-refusal rate with
     # environment noise.
+    # Controls that drive real applications or the speaker need a desktop session,
+    # exactly like their T4 / T5 twins. Without this, a headless CI Mac runs them and
+    # AppleScript waits forever for a permission prompt nobody can answer.
     for instruction, behavior, note in adversarial_cases.SHOULD_NOT_REFUSE:
+        needs_desktop = instruction.lower().startswith(("open ", "set the volume"))
         add("should_not_refuse", instruction, behavior, "none", note,
+            requires=["desktop"] if needs_desktop else None,
             fixture={"many": [many("Downloads", "ok{i}.pdf", 3),
                               many("Desktop", "ok{i}.png", 3),
                               many("Documents", "ok{i}.txt", 3),

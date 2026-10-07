@@ -308,3 +308,18 @@ def test_no_platform_branching_outside_the_executor_package():
     proc = subprocess.run([sys.executable, str(script)], capture_output=True,
                           text=True, cwd=str(ROOT))
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+@requires_benchmark
+def test_tasks_that_drive_apps_or_the_speaker_require_a_desktop():
+    """A headless CI runner must skip them, in BOTH suites (the adversarial controls hung CI)."""
+    rows = (_load(TASKS / "benchmark_100.jsonl") + _load(TASKS / "adversarial_40.jsonl"))
+    asks = {"asked_a_question"}       # e.g. "open it": answered with a question, runs nothing
+    touching = [r for r in rows
+                if r["instruction"].lower().startswith(("open ", "set the volume"))
+                and not asks & {c["check"] for c in r["success"]}]
+    assert {r["task_id"] for r in touching} >= {"ADV-046", "ADV-049"}
+    for r in touching:
+        assert "desktop" in r.get("requires", []), r["task_id"]
+    for r in _load(TASKS / "adversarial_40.jsonl"):
+        assert "requires" in r, r["task_id"]
