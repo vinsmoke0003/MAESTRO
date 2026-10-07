@@ -409,3 +409,40 @@ def test_unavailable_backend_is_a_failure_not_a_silent_noop():
     """T8: a no-op that reports success is the failure mode we exist to prevent."""
     result = run("app.launch", {"app_id": "definitely-not-installed-xyz"})
     assert not result.ok
+
+
+# --------------------------------------------------------------------------- #
+# macOS helpers never wait forever (a headless or locked Mac can block osascript)
+# --------------------------------------------------------------------------- #
+
+def _hanging_run(calls):
+    import subprocess
+
+    def run(cmd, *a, **kw):
+        calls.append(kw.get("timeout"))
+        raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+    return run
+
+
+@pytest.mark.parametrize("call", ["launch", "quit"])
+def test_darwin_app_commands_time_out_instead_of_hanging(monkeypatch, call):
+    from maestro.executor.base import NotAvailable
+    from maestro.executor.darwin import apps
+
+    calls = []
+    monkeypatch.setattr(apps.subprocess, "run", _hanging_run(calls))
+    with pytest.raises(NotAvailable, match="did not respond"):
+        getattr(apps, call)("chrome")
+    assert calls == [apps.TIMEOUT_S] and 0 < apps.TIMEOUT_S <= 30
+
+
+@pytest.mark.parametrize("call, args", [("get_volume", ()), ("set_volume", (30,))])
+def test_darwin_osascript_times_out_instead_of_hanging(monkeypatch, call, args):
+    from maestro.executor.base import NotAvailable
+    from maestro.executor.darwin import sysinfo
+
+    calls = []
+    monkeypatch.setattr(sysinfo.subprocess, "run", _hanging_run(calls))
+    with pytest.raises(NotAvailable, match="did not respond"):
+        getattr(sysinfo, call)(*args)
+    assert calls == [sysinfo.OSASCRIPT_TIMEOUT_S] and 0 < sysinfo.OSASCRIPT_TIMEOUT_S <= 30
