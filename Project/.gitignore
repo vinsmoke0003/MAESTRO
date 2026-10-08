@@ -36,3 +36,7 @@ eval/results/raw/
 .eval_tmp/
 .DS_Store
 Thumbs.db
+
+# PyInstaller output (scripts/build_windows.ps1). Generated, never committed.
+/build/
+/dist/

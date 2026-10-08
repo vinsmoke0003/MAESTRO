@@ -47,24 +47,29 @@ class GoogleNotConnected(RuntimeError):
     """No usable token: the user has not run `maestro google connect`."""
 
 
-def google_dir() -> Path:
-    """The folder where MAESTRO keeps the Google client file and token (~/.maestro/google), created
-    if needed.
+def google_home() -> Path:
+    """Where MAESTRO keeps the Google client file and token (~/.maestro/google). Never created
+    here, so inspecting status cannot change the disk.
     """
-    d = settings().home / "google"
+    return settings().home / "google"
+
+
+def google_dir() -> Path:
+    """The Google folder, created if needed. Only for operations that write into it."""
+    d = google_home()
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def client_secret_path() -> Path:
-    """The OAuth client file downloaded from Google Cloud Console."""
+    """The OAuth client file downloaded from Google Cloud Console (not created)."""
     override = os.environ.get("MAESTRO_GOOGLE_CLIENT_SECRET")
-    return Path(override).expanduser() if override else google_dir() / "client_secret.json"
+    return Path(override).expanduser() if override else google_home() / "client_secret.json"
 
 
 def token_path() -> Path:
-    """Where the sign-in token is stored."""
-    return google_dir() / "token.json"
+    """Where the sign-in token is stored (not created)."""
+    return google_home() / "token.json"
 
 
 def _libs():
@@ -82,6 +87,7 @@ def _libs():
 
 def _save(creds) -> None:
     """Write the token to disk, readable only by the current user."""
+    google_dir()
     p = token_path()
     p.write_text(creds.to_json(), encoding="utf-8")
     try:
@@ -90,8 +96,11 @@ def _save(creds) -> None:
         pass
 
 
-def connect(open_browser: bool = True):
-    """Run the browser consent flow and store the token. Returns credentials."""
+def connect(open_browser: bool = True, timeout_seconds: int | None = None):
+    """Run the browser consent flow and store the token. Returns credentials.
+
+    `timeout_seconds` ends a sign-in the user abandoned (None waits forever, as the CLI does).
+    """
     _, _, InstalledAppFlow = _libs()
     secret = client_secret_path()
     if not secret.exists():
@@ -108,7 +117,8 @@ def connect(open_browser: bool = True):
                                       "Opening your browser to sign in to Google...\n"
                                       "If it does not open, visit:\n{url}\n"),
                                   success_message=("MAESTRO is connected to your Google "
-                                                   "account. You can close this tab."))
+                                                   "account. You can close this tab."),
+                                  timeout_seconds=timeout_seconds)
     _save(creds)
     return creds
 
@@ -150,11 +160,148 @@ def status() -> dict:
     return info
 
 
+# --------------------------------------------------------------------------- #
+# read-only status for the workspace UI
+# --------------------------------------------------------------------------- #
+
+# Which granted scopes each service needs. Scope names are public identifiers,
+# not credentials.
+SERVICE_SCOPES = {
+    "gmail": ["gmail.readonly", "gmail.compose"],
+    "drive": ["drive.readonly", "drive.file"],
+    "calendar": ["calendar.events"],
+}
+
+_STATE_MESSAGES = {
+    "setup_required": "Google is not set up yet. Create the OAuth client file "
+                      "(see docs/GOOGLE-SETUP.md), then run: maestro google connect",
+    "connect_required": "The OAuth client is ready. Click Connect Google, or run: "
+                        "maestro google connect",
+    "connected": "Connected to Google.",
+    "reconnect_required": "The Google sign-in needs to be renewed. Run: maestro google connect",
+}
+
+
+def _libraries_installed() -> bool:
+    """True if Google's client libraries can be imported (checked without importing them)."""
+    import importlib.util
+
+    try:
+        return all(importlib.util.find_spec(m) is not None
+                   for m in ("googleapiclient", "google_auth_oauthlib"))
+    except (ImportError, ValueError):
+        return False
+
+
+def _short_scopes(raw) -> list[str]:
+    """Scope URLs as short names ('gmail.readonly'); accepts a list or a space-separated string."""
+    items = raw.split() if isinstance(raw, str) else list(raw or [])
+    return sorted({str(s).rsplit("/", 1)[-1] for s in items if s})
+
+
+def _expired(expiry: str | None) -> bool | None:
+    """Whether a token's expiry time has passed; None if unknown or unreadable."""
+    if not expiry:
+        return None
+    from datetime import datetime, timezone
+
+    try:
+        when = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)   # google-auth writes UTC expiry times
+    return when <= datetime.now(timezone.utc)
+
+
+def integration_status() -> dict:
+    """Google status for the workspace UI, read from local files only.
+
+    Never creates folders or files, never refreshes the token, never touches the
+    network. Returns booleans, short scope names and the token's expiry time;
+    no secret, token value or file path ever leaves this function.
+    """
+    libraries = _libraries_installed()
+    client_ok = client_secret_path().is_file()
+    tok = token_path()
+    token_present = tok.is_file()
+    token_readable, scopes, expiry, refreshable = False, [], None, False
+    if token_present:
+        try:
+            data = json.loads(tok.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                scopes = _short_scopes(data.get("scopes"))
+                expiry = data.get("expiry") if isinstance(data.get("expiry"), str) else None
+                refreshable = bool(data.get("refresh_token"))
+                token_readable = True
+            del data
+        except (OSError, ValueError):
+            token_readable = False
+    expired = _expired(expiry)
+
+    if token_present and libraries:
+        usable = token_readable and (refreshable or expired is False)
+        all_scopes = all(s in scopes for need in SERVICE_SCOPES.values() for s in need)
+        state = "connected" if usable and all_scopes else "reconnect_required"
+    elif client_ok and libraries:
+        state = "connect_required"
+    else:
+        state = "setup_required"
+
+    reason = None
+    if not libraries:
+        reason = 'Google support is not installed: pip install -e ".[google]"'
+    elif state == "reconnect_required":
+        if not token_readable:
+            reason = "The stored sign-in could not be read."
+        elif not (refreshable or expired is False):
+            reason = "The stored sign-in has expired and cannot be renewed."
+        else:
+            reason = "Some permissions were not granted."
+
+    services = {}
+    for name, need in SERVICE_SCOPES.items():
+        if state in ("setup_required", "connect_required"):
+            svc = state
+        elif state == "reconnect_required" and not (token_readable and
+                                                    (refreshable or expired is False)):
+            svc = "reconnect_required"
+        else:
+            svc = "connected" if all(s in scopes for s in need) else "permission_missing"
+        services[name] = {"state": svc, "permission": all(s in scopes for s in need),
+                          "scopes": [s for s in need if s in scopes]}
+
+    return {
+        "state": state,
+        "message": reason or _STATE_MESSAGES[state],
+        "libraries_installed": libraries,
+        "client_configured": client_ok,
+        "token_present": token_present,
+        "token_readable": token_readable,
+        "token_expiry": expiry,
+        "token_expired": expired,
+        "token_refreshable": refreshable,
+        "scopes": scopes,
+        "services": services,
+    }
+
+
 def disconnect() -> bool:
-    """Revoke the token at Google (best effort) and delete it locally."""
+    """Revoke the token at Google (best effort) and delete it locally. False if there was none."""
+    return disconnect_detailed()["removed"]
+
+
+def disconnect_detailed() -> dict:
+    """Revoke the token at Google (best effort), then delete it locally.
+
+    Returns {"had_token", "revoked", "removed"}: revoked is None when there was nothing to
+    revoke. A failed revocation never stops the local token from being deleted. Touches only
+    the token file: no mail, Drive file or calendar event is read or changed.
+    """
     p = token_path()
     if not p.exists():
-        return False
+        return {"had_token": False, "revoked": None, "removed": False}
+    revoked = None
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
         token = data.get("refresh_token") or data.get("token")
@@ -167,7 +314,11 @@ def disconnect() -> bool:
                 data=urllib.parse.urlencode({"token": token}).encode(),
                 headers={"Content-Type": "application/x-www-form-urlencoded"})
             urllib.request.urlopen(req, timeout=10)  # noqa: S310 - fixed Google URL
+            revoked = True
     except Exception:
-        pass  # revocation is best effort; deleting the token is what matters here
-    p.unlink(missing_ok=True)
-    return True
+        revoked = False  # revocation is best effort; deleting the token is what matters here
+    try:
+        p.unlink(missing_ok=True)
+    except OSError:
+        pass
+    return {"had_token": True, "revoked": revoked, "removed": not p.exists()}

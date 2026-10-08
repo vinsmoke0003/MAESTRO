@@ -21,7 +21,9 @@ instruction.
 
 from __future__ import annotations
 
+import hmac
 import json
+import secrets
 import threading
 import time
 import webbrowser
@@ -67,6 +69,15 @@ class Workspace:
         self._grant: tuple[str, str] | None = None   # (fingerprint, typed token)
         self.progress: list[dict] = []
         self.job: dict | None = None          # running execution, if any
+
+        # Google sign-in from the Connections page, and the per-server token that
+        # every request changing the Google connection must carry (see make_handler).
+        self.google_flow = GoogleFlow()
+        self.request_token = secrets.token_urlsafe(32)
+        # Push-to-talk for the Voice page. Produces text only; it never plans or runs.
+        from maestro.voice.capture import VoiceCapture
+
+        self.voice = VoiceCapture()
 
     # ---- consent ---------------------------------------------------------
 
@@ -278,8 +289,123 @@ class Workspace:
                 "running": bool(self.job and not self.job.get("done"))}
 
     def close(self) -> None:
-        """Close the pipeline's databases."""
-        self.pipe.close()
+        """Release the microphone if a recording is open, then close the pipeline's databases."""
+        try:
+            self.voice.shutdown()
+        finally:
+            self.pipe.close()
+
+
+# --------------------------------------------------------------------------- #
+# Google connect / disconnect from the Connections page
+# --------------------------------------------------------------------------- #
+
+CONNECTABLE = ("connect_required", "reconnect_required")
+GOOGLE_SIGNIN_TIMEOUT_S = 300
+
+_FLOW_MESSAGES = {
+    "idle": "",
+    "connecting": "Waiting for Google sign-in… Finish it in the browser window Google opened.",
+    "connected": "Connected to Google.",
+    "failed": "Google sign-in did not complete. Nothing was changed. You can try again.",
+}
+
+
+class GoogleFlow:
+    """At most one Google sign-in at a time, run in the background.
+
+    The sign-in itself is `auth.connect()`, the same code `maestro google connect`
+    runs: it opens Google's own page in the browser and stores the token with the
+    existing owner-only writer. This class only tracks a safe state for the page:
+    idle -> connecting -> connected | failed. The URL, the code Google returns,
+    tokens and error details are never kept here, so they can never be served.
+    """
+
+    def __init__(self, timeout_s: int = GOOGLE_SIGNIN_TIMEOUT_S):
+        """Start idle; `timeout_s` ends a sign-in the user walked away from."""
+        self._lock = threading.Lock()
+        self.state = "idle"
+        self.timeout_s = timeout_s
+
+    def snapshot(self) -> dict:
+        """The current state and its fixed, user-facing message."""
+        with self._lock:
+            return {"state": self.state, "message": _FLOW_MESSAGES[self.state]}
+
+    def start(self) -> tuple[int, dict]:
+        """Start one sign-in if allowed. Returns (HTTP status, answer) immediately."""
+        from maestro.google import auth
+
+        with self._lock:
+            if self.state == "connecting":
+                return 409, {"error": "A Google sign-in is already in progress."}
+            st = _google_status()
+            if st["state"] not in CONNECTABLE:
+                return 409, {"error": _NOT_CONNECTABLE.get(
+                    st["state"], "Google cannot be connected right now.")}
+            self.state = "connecting"
+        threading.Thread(target=self._run, args=(auth,), daemon=True,
+                         name="google-signin").start()
+        return 202, self.snapshot()
+
+    def _run(self, auth) -> None:
+        """Background thread: run the existing sign-in and record only success or failure."""
+        try:
+            auth.connect(open_browser=True, timeout_seconds=self.timeout_s)
+            ok = True
+        except BaseException:  # noqa: BLE001 - every failure becomes the same safe message
+            ok = False
+        with self._lock:
+            self.state = "connected" if ok else "failed"
+
+    @property
+    def busy(self) -> bool:
+        """True while a sign-in is running."""
+        with self._lock:
+            return self.state == "connecting"
+
+
+_NOT_CONNECTABLE = {
+    "setup_required": "Google is not set up yet: add the OAuth client file first "
+                      "(see docs/GOOGLE-SETUP.md).",
+    "connected": "Google is already connected.",
+    "unavailable": "Google status could not be read, so sign-in was not started.",
+}
+
+
+def _google_status() -> dict:
+    """The read-only Google status, or the safe 'unavailable' answer."""
+    return integrations_json()["google"]
+
+
+def google_disconnect(flow: GoogleFlow) -> tuple[int, dict]:
+    """Delete MAESTRO's Google token and try to revoke it at Google. Mail, Drive files and
+    calendar events are not touched.
+    """
+    if flow.busy:
+        return 409, {"error": "Wait for the Google sign-in to finish first."}
+    st = _google_status()
+    if not (st.get("token_present") or st["state"] in ("connected", "reconnect_required")):
+        return 409, {"error": "MAESTRO is not connected to Google."}
+    try:
+        from maestro.google import auth
+
+        out = auth.disconnect_detailed()
+    except Exception:  # noqa: BLE001 - no detail reaches the page
+        return 500, {"ok": False, "removed": False, "revoked": None,
+                     "message": "Disconnect did not complete. The sign-in may still be "
+                                "stored; try again.",
+                     "google": _google_status()}
+    removed, revoked = bool(out.get("removed")), out.get("revoked")
+    if removed and revoked:
+        msg = "Disconnected. The local sign-in was deleted and access was revoked at Google."
+    elif removed:
+        msg = ("Disconnected. The local sign-in was deleted, but Google could not be reached "
+               "to revoke access; you can remove MAESTRO at myaccount.google.com/permissions.")
+    else:
+        msg = "The local sign-in could not be deleted. MAESTRO may still be connected."
+    return 200, {"ok": removed, "removed": removed, "revoked": revoked, "message": msg,
+                 "google": _google_status()}
 
 
 # --------------------------------------------------------------------------- #
@@ -353,6 +479,39 @@ def _compact_args(args: dict) -> dict:
 # --------------------------------------------------------------------------- #
 
 PAGE = (Path(__file__).parent / "ui.html")
+TOKEN_PLACEHOLDER = b"__MAESTRO_REQUEST_TOKEN__"
+TOKEN_HEADER = "X-MAESTRO-Token"
+# State-changing requests that need the page's token (see Handler._authorized).
+PROTECTED_POSTS = ("/api/integrations/google/connect", "/api/integrations/google/disconnect",
+                   "/api/voice/start", "/api/voice/stop", "/api/voice/discard")
+LOCAL_HOSTS = ("127.0.0.1", "localhost")
+
+
+def _host_only(value: str) -> str:
+    """'localhost:8765' -> 'localhost'; '[::1]:80' -> '::1'; lower-cased."""
+    v = (value or "").strip().lower()
+    if v.startswith("["):
+        return v[1:].split("]", 1)[0]
+    return v.rsplit(":", 1)[0] if v.count(":") == 1 else v
+
+
+def integrations_json() -> dict:
+    """Read-only status of the external integrations, for the Connections page.
+
+    Local files only: no folder is created, no token refreshed, no network call
+    made. Any failure becomes a generic 'unavailable' answer, so the page never
+    sees an exception, a path or a credential.
+    """
+    try:
+        from maestro.google import auth
+
+        google = auth.integration_status()
+    except Exception:
+        google = {"state": "unavailable",
+                  "message": "Google status could not be read on this machine.",
+                  "services": {name: {"state": "unavailable", "permission": False, "scopes": []}
+                               for name in ("gmail", "drive", "calendar")}}
+    return {"google": google}
 
 
 def make_handler(ws: Workspace):
@@ -387,17 +546,46 @@ def make_handler(ws: Workspace):
             except json.JSONDecodeError:
                 return {}
 
+        def _local_host(self) -> bool:
+            """True if the request was addressed to this machine by name or loopback address.
+            Refusing other Host names defeats DNS-rebinding pages that resolve to 127.0.0.1.
+            """
+            return _host_only(self.headers.get("Host", "")) in LOCAL_HOSTS
+
+        def _authorized(self) -> bool:
+            """A Google-changing request must come from the MAESTRO page itself: a local Host,
+            no foreign Origin, and this server's secret token in the custom header.
+            """
+            if not self._local_host():
+                return False
+            origin = self.headers.get("Origin")
+            if origin and _host_only(urlparse(origin).netloc) not in LOCAL_HOSTS:
+                return False
+            sent = self.headers.get(TOKEN_HEADER, "")
+            return hmac.compare_digest(sent.encode(), ws.request_token.encode())
+
         def do_GET(self):
-            """Serve the page and the read-only endpoints: state, history, progress and audit."""
+            """Serve the page and the read-only endpoints: state, history, progress, audit and
+            integrations.
+            """
             path = urlparse(self.path).path
             if path == "/":
-                self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+                # The request token goes only into the page served to a local Host name.
+                token = ws.request_token.encode() if self._local_host() else b""
+                page = PAGE.read_bytes().replace(TOKEN_PLACEHOLDER, token)
+                self._send(200, page, "text/html; charset=utf-8")
             elif path == "/api/state":
                 self._json(ws.state())
             elif path == "/api/history":
                 self._json(ws.history())
             elif path == "/api/progress":
                 self._json(ws.progress_json())
+            elif path == "/api/integrations":
+                self._json(integrations_json())
+            elif path == "/api/integrations/google/flow":
+                self._json(ws.google_flow.snapshot())
+            elif path == "/api/voice/status":
+                self._json(ws.voice.status())
             elif path == "/api/audit":
                 self._json(ws.audit())
             else:
@@ -408,6 +596,8 @@ def make_handler(ws: Workspace):
             JSON, never crash the server.
             """
             path = urlparse(self.path).path
+            if path in PROTECTED_POSTS:
+                return self._protected_post(path)
             body = self._body()
             try:
                 if path == "/api/plan":
@@ -427,7 +617,85 @@ def make_handler(ws: Workspace):
             except Exception as e:  # the page shows the error; the server survives
                 return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
 
+        def _protected_post(self, path: str) -> None:
+            """Google connect/disconnect and the microphone controls: only for an authorized
+            request from the MAESTRO page, so a foreign web page can neither sign in, sign out,
+            nor switch the microphone on.
+            """
+            self._body()   # drain it; these endpoints take no input
+            if not self._authorized():
+                return self._json({"error": "This request was not sent by the MAESTRO page."},
+                                  403)
+            actions = {
+                "/api/integrations/google/connect": ws.google_flow.start,
+                "/api/integrations/google/disconnect": lambda: google_disconnect(ws.google_flow),
+                "/api/voice/start": ws.voice.start,
+                "/api/voice/stop": ws.voice.stop,
+                "/api/voice/discard": ws.voice.discard,
+            }
+            try:
+                status, out = actions[path]()
+            except Exception:  # noqa: BLE001 - never echo internals for these endpoints
+                status, out = 500, {"error": "The request could not be completed."}
+            return self._json(out, status)
+
     return Handler
+
+
+class LocalServer:
+    """One Workspace behind the existing handler, on 127.0.0.1 only.
+
+    Shared by `maestro ui` (served in the foreground) and `maestro desktop`
+    (served on a background thread under a native window), so both run the same
+    pipeline, consent gate, request-token checks, Google and voice code.
+    `close()` is safe to call more than once: it stops the server if it runs in
+    the background, closes the listening socket, then closes the Workspace
+    (which releases the microphone and the pipeline's databases) exactly once.
+    """
+
+    def __init__(self, port: int = 0, *, pipeline: MaestroPipeline | None = None):
+        """Create the Workspace and bind to 127.0.0.1:`port` (0 = any free port)."""
+        self.ws = Workspace(pipeline)
+        try:
+            self.httpd = ThreadingHTTPServer((HOST, port), make_handler(self.ws))
+        except BaseException:
+            self.ws.close()
+            raise
+        self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
+        self._closed = False
+
+    @property
+    def url(self) -> str:
+        """The page's address, e.g. http://127.0.0.1:54321/."""
+        return f"http://{HOST}:{self.httpd.server_address[1]}/"
+
+    def start(self) -> None:
+        """Serve on a background thread (desktop mode)."""
+        self._thread = threading.Thread(target=self.httpd.serve_forever, name="maestro-http",
+                                        daemon=True)
+        self._thread.start()
+
+    def serve_forever(self) -> None:
+        """Serve on the calling thread until Ctrl+C (`maestro ui`)."""
+        try:
+            self.httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+    def close(self) -> None:
+        """Stop serving, close the socket, close the Workspace. Runs its work only once."""
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        try:
+            if self._thread is not None and self._thread.is_alive():
+                self.httpd.shutdown()          # only valid while serve_forever runs elsewhere
+                self._thread.join(5)
+            self.httpd.server_close()
+        finally:
+            self.ws.close()
 
 
 def serve(port: int = DEFAULT_PORT, *, open_browser: bool = True,
@@ -435,21 +703,17 @@ def serve(port: int = DEFAULT_PORT, *, open_browser: bool = True,
     """Start the local web workspace on 127.0.0.1 (this machine only), optionally open the browser,
     and run until Ctrl+C.
     """
-    ws = Workspace(pipeline)
-    httpd = ThreadingHTTPServer((HOST, port), make_handler(ws))
-    url = f"http://{HOST}:{httpd.server_address[1]}/"
+    srv = LocalServer(port, pipeline=pipeline)
+    url = srv.url
     print(f"MAESTRO workspace at {url}   (Ctrl+C to stop)")
-    print(f"[{ws.pipe.describe()}]")
+    print(f"[{srv.ws.pipe.describe()}]")
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        srv.serve_forever()
     finally:
-        httpd.server_close()
-        ws.close()
+        srv.close()
     return 0
 
 
-__all__ = ["Workspace", "serve", "turn_json", "DEFAULT_PORT"]
+__all__ = ["Workspace", "LocalServer", "serve", "turn_json", "DEFAULT_PORT"]

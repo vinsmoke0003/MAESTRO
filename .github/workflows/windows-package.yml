@@ -1,0 +1,82 @@
+name: Windows package (manual)
+
+# Builds the portable one-folder MAESTRO app on a real Windows runner, then
+# uploads it as ONE zip plus its SHA-256 manifest. Manual only: it runs when
+# someone presses "Run workflow"; no push, pull request, schedule or release
+# triggers it, so untrusted pull-request code is never built here.
+#
+# No secrets are used. Nothing is published as a release. The validation step is
+# non-interactive (-SkipLaunch): a downloaded build must still be launched and
+# checked by hand on a Windows desktop.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-package-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: Project
+        shell: pwsh
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: Project/pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[desktop,google,voice,nlp,dev,packaging]"
+
+      - name: Ruff
+        run: python -m ruff check maestro data eval training tests scripts packaging
+
+      - name: Tests (complete suite)
+        run: python -m pytest
+
+      - name: Build MAESTRO.exe
+        run: ./scripts/build_windows.ps1
+
+      - name: Validate the bundle (non-interactive)
+        run: ./scripts/test_windows_package.ps1 -SkipLaunch
+
+      - name: Zip the one-folder app and hash it
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "package"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $zip = Join-Path $out "MAESTRO-windows-portable.zip"
+          # The whole dist\MAESTRO folder, so MAESTRO.exe stays next to its _internal\ files.
+          Compress-Archive -Path "dist\MAESTRO" -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = Join-Path $out "MAESTRO-windows-portable.zip.sha256"
+          "$hash  MAESTRO-windows-portable.zip" | Set-Content -LiteralPath $manifest -Encoding ascii
+          "commit $env:GITHUB_SHA" | Add-Content -LiteralPath $manifest -Encoding ascii
+          Get-Content -LiteralPath $manifest
+
+      - name: Upload the zip and its SHA-256 manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: MAESTRO-windows-portable
+          path: |
+            ${{ runner.temp }}/package/MAESTRO-windows-portable.zip
+            ${{ runner.temp }}/package/MAESTRO-windows-portable.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
