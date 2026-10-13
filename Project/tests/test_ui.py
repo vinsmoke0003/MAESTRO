@@ -335,17 +335,19 @@ def test_connections_reads_use_get_and_never_start_sign_in():
 
 
 def test_only_state_changing_actions_send_the_request_token():
-    assert SCRIPT.count("protectedPost(") == 4        # the definition + three callers
+    assert SCRIPT.count("protectedPost(") == 5        # the definition + four callers
     assert "protectedPost('/api/integrations/google/connect')" in _fn("connectGoogle")
     assert "protectedPost('/api/integrations/google/disconnect')" in _fn("confirmDisconnect")
     assert "protectedPost(path)" in _fn("voiceAction")
+    assert "protectedPost(path)" in _fn("speechAction")
     assert SCRIPT.count("X-MAESTRO-Token") == 1
     for fn, path in (("startVoice", "/api/voice/start"), ("stopVoice", "/api/voice/stop"),
                      ("discardVoice", "/api/voice/discard")):
         assert f"voiceAction('{path}')" in _fn(fn)
     assert set(ui.PROTECTED_POSTS) == {
         "/api/integrations/google/connect", "/api/integrations/google/disconnect",
-        "/api/voice/start", "/api/voice/stop", "/api/voice/discard"}
+        "/api/voice/start", "/api/voice/stop", "/api/voice/discard",
+        "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test"}
 
 
 def test_cancelling_the_disconnect_confirmation_sends_nothing():
@@ -810,3 +812,124 @@ def test_voice_stopping_state_keeps_start_disabled_and_is_labelled():
     assert sorted(x.strip(" '") for x in busy.split(",")) == sorted(BUSY)
     assert "V_BUSY.includes(v.state)" in _fn("renderVoice")
     assert "watchVoice()" in _fn("discardVoice")
+
+
+
+# --------------------------------------------------------------------------- #
+# Spoken replies (fake voice only)
+# --------------------------------------------------------------------------- #
+
+class _FakeMouth:
+    def __init__(self):
+        self.said = []
+        self.available = True
+
+    def say(self, text):
+        self.said.append(text)
+
+
+def _wait_said(mouth, n, timeout=5.0):
+    t0 = time.time()
+    while len(mouth.said) < n and time.time() - t0 < timeout:
+        time.sleep(0.01)
+    return mouth.said
+
+
+@pytest.fixture
+def spoken(ws, monkeypatch):
+    from maestro.voice import mouth as mouth_mod
+    from maestro.voice.speaker import Speaker
+
+    def forbidden(*a, **k):
+        raise AssertionError("the real OS voice was used in a test")
+
+    monkeypatch.setattr(mouth_mod.SystemMouth, "say", forbidden)
+    fake = _FakeMouth()
+    ws.speaker = Speaker(mouth_factory=lambda: fake, availability=lambda: True)
+    ws.fake_mouth = fake
+    return ws
+
+
+def test_replies_are_silent_until_switched_on(spoken):
+    spoken.plan("move my files")
+    time.sleep(0.2)
+    assert spoken.fake_mouth.said == [] and spoken.speaker.status()["enabled"] is False
+
+
+def test_question_plan_and_result_are_spoken_and_nothing_extra_runs(spoken, aliased):
+    spoken.speaker.set_enabled(True)
+    out = spoken.plan("move my files")
+    assert out["status"] == "clarified"
+    assert _wait_said(spoken.fake_mouth, 1)[0] == ui_speakable(out["message"])
+    spoken.answer("cancel")
+    _wait_said(spoken.fake_mouth, 2)
+
+    out = spoken.plan("move the pdfs from inbox to archive")
+    assert out["status"] == "previewed"
+    said = _wait_said(spoken.fake_mouth, 3)[-1]
+    assert "plan is ready" in said and "approve it or deny it" in said
+    assert (aliased / "inbox" / "a.pdf").exists()            # speaking ran nothing
+    spoken.approve()
+    _wait(spoken)
+    said = _wait_said(spoken.fake_mouth, 4)[-1]
+    assert said.startswith("Done")                           # the run's own outcome message
+
+
+def ui_speakable(text):
+    from maestro.voice.mouth import speakable
+
+    return speakable(text)
+
+
+def test_speech_controls_need_the_request_token(spoken):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(spoken))
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    def post(path, headers):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=b"{}",
+                                     method="POST",
+                                     headers={"Content-Type": "application/json", **headers})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    try:
+        token = {"X-MAESTRO-Token": spoken.request_token}
+        for path in ("/api/speech/on", "/api/speech/off", "/api/speech/stop",
+                     "/api/speech/test"):
+            for headers in ({}, {"X-MAESTRO-Token": "wrong"},
+                            {**token, "Origin": "https://evil.example"},
+                            {**token, "Host": "evil.example:8765"}):
+                assert post(path, headers)[0] == 403, (path, headers)
+        assert spoken.speaker.status()["enabled"] is False
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/speech/status",
+                                    timeout=10) as r:
+            assert json.loads(r.read()) == {"enabled": False, "available": True,
+                                            "speaking": False}
+        assert post("/api/speech/test", token)[0] == 409            # off: nothing to test
+        assert post("/api/speech/on", token) == (200, {"enabled": True, "available": True,
+                                                       "speaking": False})
+        assert post("/api/speech/test", token)[0] == 200
+        from maestro.voice.speaker import TEST_SENTENCE
+        assert _wait_said(spoken.fake_mouth, 1) == [TEST_SENTENCE]
+        assert post("/api/speech/off", token)[1]["enabled"] is False
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_speech_page_only_switches_never_sends_text():
+    for name in ("renderSpeech", "loadSpeech", "speechAction", "toggleSpeech"):
+        body = _fn(name)
+        assert "body" not in body.replace("tbody", "") and "text:" not in body
+    assert re.findall(r"'(/api/[\w/]+)'", _fn("loadSpeech")) == ["/api/speech/status"]
+    assert re.findall(r"'(/api/[\w/]+)'", _fn("toggleSpeech")) == ["/api/speech/off",
+                                                                  "/api/speech/on"]
+    voice = PAGE_HTML.split('data-section="voice"', 1)[1].split("</section>", 1)[0]
+    assert 'id="btn-speech-toggle" role="switch" aria-checked="false"' in voice
+    assert 'aria-label="Read results aloud"' in voice and 'aria-label="Stop speaking"' in voice
+    assert 'id="speech-status" role="status" aria-live="polite"' in voice
+    assert "Off by default" in voice

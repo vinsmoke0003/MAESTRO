@@ -78,6 +78,10 @@ class Workspace:
         from maestro.voice.capture import VoiceCapture
 
         self.voice = VoiceCapture()
+        # Spoken replies: off until the user turns them on; speaks only MAESTRO's own text.
+        from maestro.voice.speaker import Speaker
+
+        self.speaker = Speaker()
 
     # ---- consent ---------------------------------------------------------
 
@@ -128,12 +132,22 @@ class Workspace:
             turn = self.pipe.resume(self.pending, answer, preview_only=True)
             return self._settle(turn)
 
+    def _speak(self, turn: Turn) -> None:
+        """Read the turn's outcome aloud if spoken replies are on. Never fails the request."""
+        try:
+            from maestro.voice.speaker import spoken_summary
+
+            self.speaker.say(spoken_summary(turn))
+        except Exception:  # noqa: BLE001 - speech is a convenience, not part of the task
+            pass
+
     def _settle(self, turn: Turn) -> dict:
         """Remember whether the turn is waiting for an answer or showing a preview, and return it
         as JSON.
         """
         self.pending = turn if turn.status == "clarified" else None
         self.previewed = turn if turn.status == "previewed" else None
+        self._speak(turn)
         return turn_json(turn)
 
     def deny(self) -> dict:
@@ -181,6 +195,7 @@ class Workspace:
                                         intent_override=prev.intent_override,
                                         expected_fingerprint=prev.plan.fingerprint())
                 self.job["result"] = turn_json(turn)
+                self._speak(turn)
             except Exception as e:  # surfaced to the page, never swallowed
                 self.job["result"] = {"status": "failed",
                                       "message": f"{type(e).__name__}: {e}"}
@@ -292,6 +307,7 @@ class Workspace:
         """Release the microphone if a recording is open, then close the pipeline's databases."""
         try:
             self.voice.shutdown()
+            self.speaker.shutdown()
         finally:
             self.pipe.close()
 
@@ -483,7 +499,8 @@ TOKEN_PLACEHOLDER = b"__MAESTRO_REQUEST_TOKEN__"
 TOKEN_HEADER = "X-MAESTRO-Token"
 # State-changing requests that need the page's token (see Handler._authorized).
 PROTECTED_POSTS = ("/api/integrations/google/connect", "/api/integrations/google/disconnect",
-                   "/api/voice/start", "/api/voice/stop", "/api/voice/discard")
+                   "/api/voice/start", "/api/voice/stop", "/api/voice/discard",
+                   "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 
 
@@ -586,6 +603,8 @@ def make_handler(ws: Workspace):
                 self._json(ws.google_flow.snapshot())
             elif path == "/api/voice/status":
                 self._json(ws.voice.status())
+            elif path == "/api/speech/status":
+                self._json(ws.speaker.status())
             elif path == "/api/audit":
                 self._json(ws.audit())
             else:
@@ -632,6 +651,10 @@ def make_handler(ws: Workspace):
                 "/api/voice/start": ws.voice.start,
                 "/api/voice/stop": ws.voice.stop,
                 "/api/voice/discard": ws.voice.discard,
+                "/api/speech/on": lambda: ws.speaker.set_enabled(True),
+                "/api/speech/off": lambda: ws.speaker.set_enabled(False),
+                "/api/speech/stop": ws.speaker.stop,
+                "/api/speech/test": ws.speaker.test,
             }
             try:
                 status, out = actions[path]()

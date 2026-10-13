@@ -65,6 +65,10 @@ def _render(value, out: Presented) -> bool:
         out.spoken = "I found nothing matching that."
         out.lines = ["  (nothing matched)"]
         return True
+    if isinstance(value, dict) and _time(value, out):
+        return True
+    if isinstance(value, dict) and _disk(value, out):
+        return True
     if isinstance(value, dict) and value and all(
             isinstance(v, (int, float, str, bool)) for v in value.values()):
         pairs = [f"{k.replace('_', ' ')} {v}" for k, v in list(value.items())[:4]]
@@ -81,14 +85,55 @@ def _numbered(items: list[str]) -> list[str]:
     return lines + [""]
 
 
+SPOKEN_NAME_MAX = 28     # longer names (codes, dates, ids) are slow and unhelpful to hear
+
+
 def _files(paths: list[str], out: Presented) -> bool:
-    """Show found files by name, and speak the count and the first few."""
+    """Show found files by name, and speak the count and the first few, but only if their
+    names are short enough to be worth hearing; otherwise just the count.
+    """
     out.lines = _numbered([PurePath(p).name for p in paths])
     names = [PurePath(p).stem for p in paths[:3]]
-    more = f", and {len(paths) - 3} more" if len(paths) > 3 else ""
     noun = "file" if len(paths) == 1 else "files"
-    out.spoken = (f"I found {len(paths)} {noun}: " + ", ".join(names) + more
-                  + ". The full list is on screen.")
+    if all(len(n) <= SPOKEN_NAME_MAX for n in names):
+        more = f", and {len(paths) - 3} more" if len(paths) > 3 else ""
+        out.spoken = (f"I found {len(paths)} {noun}: " + ", ".join(names) + more
+                      + ". The full list is on screen.")
+    else:
+        out.spoken = f"I found {len(paths)} {noun}. The full list is on screen."
+    return True
+
+
+def _time(value: dict, out: Presented) -> bool:
+    """`sys.info time`: say the time like a person ("It's 12:03 PM on Tuesday, 13 October"),
+    not the raw timestamp and epoch number.
+    """
+    if not {"local", "epoch"} <= set(value):
+        return False
+    from datetime import datetime
+
+    try:
+        dt = datetime.fromisoformat(str(value["local"]))
+    except ValueError:
+        return False
+    clock = dt.strftime("%I:%M %p").lstrip("0")
+    out.lines = [f"  {dt.strftime('%A, %d %B %Y')}, {clock}"]
+    out.spoken = f"It's {clock} on {dt.strftime('%A')}, {dt.day} {dt.strftime('%B')}."
+    return True
+
+
+def _disk(value: dict, out: Presented) -> bool:
+    """`sys.info disk`: free space in plain words, rounded, instead of four raw numbers."""
+    keys = {"total_gb", "free_gb", "percent_used"}
+    if not keys <= set(value):
+        return False
+    try:
+        free, total, used = (float(value["free_gb"]), float(value["total_gb"]),
+                             float(value["percent_used"]))
+    except (TypeError, ValueError):
+        return False
+    out.lines = [f"  {free:.1f} GB free of {total:.1f} GB ({used:.1f}% used)"]
+    out.spoken = f"You have {free:.1f} gigabytes free of {total:.0f}; {used:.0f} percent is used."
     return True
 
 
