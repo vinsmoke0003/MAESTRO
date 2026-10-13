@@ -78,9 +78,10 @@ _PATH = re.compile(r"(?:[A-Za-z]:)?[~/\\][^\s,;]+")
 
 def speakable(text: str, limit: int = 320) -> str:
     """Shorten and de-symbol text so a speech engine reads it naturally."""
-    t = text.replace("—", ", ").replace("->", " to ").replace("→", " to ")
+    t = text.replace(" — ", ", ").replace("—", ", ").replace("->", " to ").replace("→", " to ")
     t = _PATH.sub(lambda m: _short_path(m.group(0)), t)
-    t = re.sub(r"\(s\)", "s", t)
+    t = re.sub(r"(?<![\d.])1 (\w+)\(s\)", r"1 \1", t)   # "1 step(s)" -> "1 step"
+    t = re.sub(r"\(s\)", "s", t)                          # "3 step(s)" -> "3 steps"
     t = re.sub(r"[`*_#>|]", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     if len(t) > limit:

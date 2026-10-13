@@ -623,14 +623,31 @@ class MaestroPipeline:
 # --------------------------------------------------------------------------- #
 
 
+def _read_only(report: RunReport) -> bool:
+    """True if every step used a read-only verb (base risk R0: list, search, read, report)."""
+    from maestro import registry
+    from maestro.ir import Risk
+
+    try:
+        return bool(report.steps) and all(registry.get(s.verb).base_risk == Risk.R0
+                                          for s in report.steps)
+    except registry.RegistryError:
+        return False
+
+
 def _outcome_message(report: RunReport) -> str:
     """The short message shown to the user for each run outcome (done, refused, cancelled, rolled
     back, ...).
     """
     if report.status == "completed":
         n = sum(s.files_touched for s in report.steps)
-        base = f"Done — {report.steps_ok} step(s) completed"
-        return base + (f", {n} file(s) touched." if n else ".")
+        k = report.steps_ok
+        base = f"Done — {k} step{'' if k == 1 else 's'} completed"
+        if not n:
+            return base + "."
+        # A run made only of read-only (R0) verbs found files; it did not touch them.
+        verb = "found" if _read_only(report) else "touched"
+        return base + f", {n} file{'' if n == 1 else 's'} {verb}."
     if report.status == "blocked":
         return f"Refused. {report.message}"
     if report.status == "denied":

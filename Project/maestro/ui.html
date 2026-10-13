@@ -473,6 +473,24 @@
         <div class="setting"><div class="label"><b>Push to talk</b><span>Press Enter to start and again to stop.</span></div><code>maestro voice --push-to-talk</code></div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Spoken replies</h2>
+      <div class="setting">
+        <div class="label"><b>Read results aloud</b>
+          <span>MAESTRO says its results, questions and refusals with this computer's own voice.</span></div>
+        <button id="btn-speech-toggle" role="switch" aria-checked="false"
+                aria-label="Read results aloud" disabled>Off</button>
+      </div>
+      <p class="muted small" id="speech-status" role="status" aria-live="polite">Checking…</p>
+      <div class="row">
+        <button id="btn-speech-test" aria-label="Play a sample sentence" disabled>Test voice</button>
+        <button id="btn-speech-stop" aria-label="Stop speaking" disabled>Stop speaking</button>
+      </div>
+      <p class="muted small">It only reads MAESTRO's own replies, never runs anything, and never
+        approves a plan: approval is still a click, and high-risk plans still need the typed
+        confirmation. Off by default.</p>
+    </div>
   </section>
 
   <!-- ============================ Activity ========================== -->
@@ -563,7 +581,7 @@ function go() {
   $('page-lede').textContent = PAGES[name][1];
   if (name === 'activity' || name === 'settings') refreshSide();
   if (name === 'connections') { loadIntegrations(); watchFlow(); }
-  if (name === 'voice') watchVoice();
+  if (name === 'voice') { watchVoice(); loadSpeech(); }
 }
 
 // ---- status indicators -------------------------------------------------------
@@ -1020,6 +1038,42 @@ async function useVoiceText() {
   $('instruction').focus();
 }
 
+// ---- spoken replies (the server speaks its own text; the page only switches it) --
+function renderSpeech(sp) {
+  const on = !!sp.enabled;
+  $('btn-speech-toggle').disabled = !sp.available;
+  $('btn-speech-toggle').setAttribute('aria-checked', String(on));
+  $('btn-speech-toggle').textContent = on ? 'On' : 'Off';
+  $('btn-speech-toggle').className = on ? 'primary' : '';
+  $('btn-speech-test').disabled = !on;
+  $('btn-speech-stop').disabled = !on;
+  $('speech-status').textContent = !sp.available
+    ? 'No system voice was found on this computer, so replies are shown only.'
+    : on ? (sp.speaking ? 'Speaking…' : 'On: results will be read aloud.')
+         : 'Off: results are shown only.';
+  // While a reply is being spoken, look again shortly so "Speaking…" clears by itself.
+  clearTimeout(renderSpeech.recheck);
+  if (sp.speaking) renderSpeech.recheck = setTimeout(loadSpeech, 1000);
+}
+
+async function loadSpeech() {
+  try { renderSpeech(await api('/api/speech/status')); }
+  catch { renderSpeech({enabled: false, available: false}); }
+}
+
+async function speechAction(path) {
+  let r;
+  try { r = await protectedPost(path); }
+  catch { r = {error: 'MAESTRO could not be reached.'}; }
+  if (r.error) { $('speech-status').textContent = r.error; return; }
+  renderSpeech(r);
+}
+
+function toggleSpeech() {
+  const on = $('btn-speech-toggle').getAttribute('aria-checked') === 'true';
+  return speechAction(on ? '/api/speech/off' : '/api/speech/on');
+}
+
 // ---- activity ----------------------------------------------------------------
 async function undo(episodeId) {
   if (running) {
@@ -1093,6 +1147,9 @@ $('btn-voice-start').onclick = startVoice;
 $('btn-voice-stop').onclick = stopVoice;
 $('btn-voice-use').onclick = useVoiceText;
 $('btn-voice-discard').onclick = discardVoice;
+$('btn-speech-toggle').onclick = toggleSpeech;
+$('btn-speech-test').onclick = () => speechAction('/api/speech/test');
+$('btn-speech-stop').onclick = () => speechAction('/api/speech/stop');
 $('instruction').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) plan(); });
 $('clarify-answer').addEventListener('keydown', e => { if (e.key === 'Enter') answer(); });
 window.addEventListener('hashchange', go);
