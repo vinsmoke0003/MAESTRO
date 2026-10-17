@@ -143,6 +143,10 @@ Windows; a macOS or Linux build does not produce a Windows executable.
 - MAESTRO keeps its data in `%USERPROFILE%\.maestro` and `%USERPROFILE%\maestro_workspace`,
   never inside the app folder.
 
+To check a downloaded build by hand on a Windows PC, follow
+[docs/WINDOWS-TEST-CHECKLIST.md](docs/WINDOWS-TEST-CHECKLIST.md). For a
+10-minute live demonstration, see [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
+
 A manually triggered GitHub Actions workflow (**Windows package (manual)**,
 `.github/workflows/windows-package.yml`) can produce the same build on a
 Windows runner. It runs Ruff and the full test suite first, then uploads one
