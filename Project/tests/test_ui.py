@@ -933,3 +933,13 @@ def test_speech_page_only_switches_never_sends_text():
     assert 'aria-label="Read results aloud"' in voice and 'aria-label="Stop speaking"' in voice
     assert 'id="speech-status" role="status" aria-live="polite"' in voice
     assert "Off by default" in voice
+
+
+def test_a_plan_blocked_by_the_scorer_is_reported_not_crashed(ws, aliased):
+    """A plan the scorer blocks (here: a path outside the allowed folders) never reaches the
+    dry run, so it has no effect manifests. The page must still get a clean refusal."""
+    out = ws.plan("move the pdfs from /etc to archive")
+    assert out["status"] in ("blocked", "refused"), out
+    assert out["message"]
+    assert out["manifests"] == [] and ws.state()["previewed"] is None
+    assert (aliased / "inbox" / "a.pdf").exists()

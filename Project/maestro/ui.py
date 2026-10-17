@@ -471,8 +471,11 @@ def turn_json(turn: Turn) -> dict:
     d["token"] = None
     if rep and rep.verdict and turn.plan and rep.gate == "typed_confirm":
         d["token"] = ConsentRequest(turn.plan, rep.verdict, rep.manifests).token
+    # A plan the scorer blocks stops before the dry run, so it has no effect manifests;
+    # the full preview needs one per action. Without them, use the pipeline's own text.
+    dry_ran = bool(rep and rep.verdict and len(rep.manifests) == len(rep.verdict.actions))
     d["preview_text"] = (render_preview(turn.plan, rep.verdict, rep.manifests)
-                         if turn.plan and rep and rep.verdict else turn.preview)
+                         if turn.plan and dry_ran else turn.preview)
     d["approval"] = asdict(rep.approval) if rep and rep.approval else None
     return d
 

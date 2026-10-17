@@ -219,7 +219,9 @@ def _ran(verbs_and_files):
 @pytest.mark.parametrize("steps, message", [
     ([("fs.glob", 32)], "Done — 1 step completed, 32 files found."),
     ([("search.by_name", 1)], "Done — 1 step completed, 1 file found."),
-    ([("fs.glob", 2), ("fs.move_batch", 2)], "Done — 2 steps completed, 4 files touched."),
+    ([("fs.glob", 3), ("fs.move_batch", 3)], "Done — 2 steps completed, 3 files touched."),
+    ([("fs.glob", 3), ("fs.mkdir", 0), ("fs.move_batch", 3)],
+     "Done — 3 steps completed, 3 files touched."),
     ([("sys.info", 0)], "Done — 1 step completed."),
 ])
 def test_outcome_says_found_for_read_only_runs_and_touched_otherwise(steps, message):
