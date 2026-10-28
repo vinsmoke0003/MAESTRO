@@ -69,6 +69,11 @@ class Speaker:
             return {"enabled": self.enabled, "available": available,
                     "speaking": self._speaking or self._pending is not None}
 
+    def busy(self) -> bool:
+        """True while a reply is being spoken or waiting to be (cheap; no device checks)."""
+        with self._lock:
+            return self._speaking or self._pending is not None
+
     def set_enabled(self, on: bool) -> tuple[int, dict]:
         """Switch spoken replies on or off. Off also drops anything waiting to be spoken."""
         if on and not (self._availability() and not self._failed):

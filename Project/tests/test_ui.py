@@ -335,7 +335,8 @@ def test_connections_reads_use_get_and_never_start_sign_in():
 
 
 def test_only_state_changing_actions_send_the_request_token():
-    assert SCRIPT.count("protectedPost(") == 5        # the definition + four callers
+    assert SCRIPT.count("protectedPost(") == 6        # the definition + five callers
+    assert "protectedPost(on ? '/api/wake/off' : '/api/wake/on')" in _fn("toggleWake")
     assert "protectedPost('/api/integrations/google/connect')" in _fn("connectGoogle")
     assert "protectedPost('/api/integrations/google/disconnect')" in _fn("confirmDisconnect")
     assert "protectedPost(path)" in _fn("voiceAction")
@@ -347,7 +348,8 @@ def test_only_state_changing_actions_send_the_request_token():
     assert set(ui.PROTECTED_POSTS) == {
         "/api/integrations/google/connect", "/api/integrations/google/disconnect",
         "/api/voice/start", "/api/voice/stop", "/api/voice/discard",
-        "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test"}
+        "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test",
+        "/api/wake/on", "/api/wake/off"}
 
 
 def test_cancelling_the_disconnect_confirmation_sends_nothing():
@@ -943,3 +945,96 @@ def test_a_plan_blocked_by_the_scorer_is_reported_not_crashed(ws, aliased):
     assert out["message"]
     assert out["manifests"] == [] and ws.state()["previewed"] is None
     assert (aliased / "inbox" / "a.pdf").exists()
+
+
+
+# --------------------------------------------------------------------------- #
+# "Hey Maestro" in the workspace (fake microphone; previews only)
+# --------------------------------------------------------------------------- #
+
+def test_a_heard_request_is_only_previewed(ws, aliased):
+    out = ws._wake_deliver("move the pdfs from inbox to archive")
+    assert out["status"] == "previewed" and out["instruction"].startswith("move the pdfs")
+    assert ws.state()["previewed"] is not None                 # the same preview the button makes
+    assert (aliased / "inbox" / "a.pdf").exists()              # nothing ran
+    assert not (aliased / "archive").exists()
+
+
+def test_a_heard_request_waits_while_a_task_runs(ws):
+    ws.job = {"done": False}
+    out = ws._wake_deliver("what time is it")
+    assert out["status"] == "busy" and ws.state()["previewed"] is None
+    ws.job = None
+
+
+def test_wake_and_push_to_talk_never_share_the_microphone(ws, monkeypatch):
+    from maestro.voice import capture
+
+    monkeypatch.setattr(capture, "_missing_deps", lambda: [])
+    import maestro.voice.wake as wake_mod
+    monkeypatch.setattr(wake_mod, "_missing_deps", lambda: [])
+    opened = {"n": 0}
+
+    class Mic:
+        transcriber = None
+
+        def frames(self):
+            opened["n"] += 1
+            try:
+                while True:
+                    time.sleep(0.005)
+                    yield None
+            finally:
+                opened["n"] -= 1
+
+    ws.wake._factory = Mic
+    assert ws.wake.start()[0] == 202
+    status, out = ws.voice_start()                             # push-to-talk refused
+    assert status == 409 and "Hey Maestro" in out["error"]
+    ws.wake.shutdown()
+    assert opened["n"] == 0 and not ws.wake.active
+    ws.voice.state = "listening"                               # now push-to-talk "holds" it
+    status, out = ws.wake.start()
+    assert status == 409 and "Push-to-talk" in out["error"]
+    ws.voice.state = "idle"
+
+
+def test_wake_switches_need_the_request_token(ws):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(ws))
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        for path in ("/api/wake/on", "/api/wake/off"):
+            for headers in ({}, {"X-MAESTRO-Token": "wrong"},
+                            {"X-MAESTRO-Token": ws.request_token,
+                             "Origin": "https://evil.example"}):
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}{path}", data=b"{}", method="POST",
+                    headers={"Content-Type": "application/json", **headers})
+                with pytest.raises(urllib.error.HTTPError) as e:
+                    urllib.request.urlopen(req, timeout=10)
+                assert e.value.code == 403
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/wake/status",
+                                    timeout=10) as r:
+            st = json.loads(r.read())
+        assert st["enabled"] is False and not ws.wake.active      # reading never switches on
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_wake_page_reads_with_get_and_only_previews():
+    assert re.findall(r"'(/api/[\w/]+)'", _fn("watchWake")) == ["/api/wake/status"]
+    assert re.findall(r"'(/api/[\w/]+)'", _fn("toggleWake")) == ["/api/wake/off",
+                                                                "/api/wake/on"]
+    heard = _fn("showHeard")
+    assert "renderTurn(t)" in heard and "$('instruction').value = ev.text" in heard
+    for forbidden in ("/api/approve", "approve(", "/api/plan", "protectedPost("):
+        assert forbidden not in heard, forbidden
+    voice = PAGE_HTML.split('data-section="voice"', 1)[1].split("</section>", 1)[0]
+    assert 'id="btn-wake-toggle" role="switch" aria-checked="false"' in voice
+    assert 'id="wake-status" role="status" aria-live="polite"' in voice
+    assert "discarded at once" in voice and "Off by default" in voice
+    assert 'id="st-wake"' in PAGE_HTML.split('class="pills"', 1)[1].split("</div>", 1)[0]
+    assert "|| wakeOn" in _fn("renderVoice")                      # Start recording disabled
+    assert "if (wakeOn !== wasOn) watchVoice();" in _fn("renderWake")  # ...and enabled again
