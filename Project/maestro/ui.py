@@ -82,6 +82,12 @@ class Workspace:
         from maestro.voice.speaker import Speaker
 
         self.speaker = Speaker()
+        # "Hey Maestro": off until switched on; requests it hears are only PREVIEWED.
+        from maestro.voice.wake import WakeListener
+
+        self.wake = WakeListener(deliver=self._wake_deliver, ears_factory=self._wake_ears,
+                                 is_speaking=self.speaker.busy,
+                                 can_start=self._mic_busy_for_wake, say=self.speaker.say)
 
     # ---- consent ---------------------------------------------------------
 
@@ -131,6 +137,39 @@ class Workspace:
                 return {"error": "there is no pending question"}
             turn = self.pipe.resume(self.pending, answer, preview_only=True)
             return self._settle(turn)
+
+    # ---- "Hey Maestro" --------------------------------------------------------
+
+    def _wake_ears(self):
+        """The microphone for wake listening, sharing push-to-talk's speech model."""
+        from maestro.voice.ears import MicEars
+
+        return MicEars(transcriber=self.voice.shared_transcriber())
+
+    def _mic_busy_for_wake(self) -> str | None:
+        """Why wake listening cannot start now (push-to-talk holds the microphone), or None."""
+        from maestro.voice.capture import BUSY as PTT_BUSY
+
+        if self.voice.state in PTT_BUSY:
+            return "Push-to-talk is using the microphone. Stop or discard it first."
+        return None
+
+    def _wake_deliver(self, text: str) -> dict:
+        """A request heard after "Hey Maestro": plan it in preview mode, exactly like the
+        Preview plan button. Nothing runs; the user still approves on screen.
+        """
+        if self.job and not self.job.get("done"):
+            return {"status": "busy", "message": "A task is running. Ask again when it has "
+                                                 "finished.", "instruction": text}
+        out = self.plan(text)
+        out["instruction"] = text
+        return out
+
+    def voice_start(self) -> tuple[int, dict]:
+        """Push-to-talk start, refused while "Hey Maestro" holds the microphone."""
+        if self.wake.active:
+            return 409, {"error": 'Turn off "Hey Maestro" first: it is using the microphone.'}
+        return self.voice.start()
 
     def _speak(self, turn: Turn) -> None:
         """Read the turn's outcome aloud if spoken replies are on. Never fails the request."""
@@ -306,6 +345,7 @@ class Workspace:
     def close(self) -> None:
         """Release the microphone if a recording is open, then close the pipeline's databases."""
         try:
+            self.wake.shutdown()
             self.voice.shutdown()
             self.speaker.shutdown()
         finally:
@@ -503,7 +543,8 @@ TOKEN_HEADER = "X-MAESTRO-Token"
 # State-changing requests that need the page's token (see Handler._authorized).
 PROTECTED_POSTS = ("/api/integrations/google/connect", "/api/integrations/google/disconnect",
                    "/api/voice/start", "/api/voice/stop", "/api/voice/discard",
-                   "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test")
+                   "/api/speech/on", "/api/speech/off", "/api/speech/stop", "/api/speech/test",
+                   "/api/wake/on", "/api/wake/off")
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 
 
@@ -608,6 +649,8 @@ def make_handler(ws: Workspace):
                 self._json(ws.voice.status())
             elif path == "/api/speech/status":
                 self._json(ws.speaker.status())
+            elif path == "/api/wake/status":
+                self._json(ws.wake.status())
             elif path == "/api/audit":
                 self._json(ws.audit())
             else:
@@ -651,13 +694,15 @@ def make_handler(ws: Workspace):
             actions = {
                 "/api/integrations/google/connect": ws.google_flow.start,
                 "/api/integrations/google/disconnect": lambda: google_disconnect(ws.google_flow),
-                "/api/voice/start": ws.voice.start,
+                "/api/voice/start": ws.voice_start,
                 "/api/voice/stop": ws.voice.stop,
                 "/api/voice/discard": ws.voice.discard,
                 "/api/speech/on": lambda: ws.speaker.set_enabled(True),
                 "/api/speech/off": lambda: ws.speaker.set_enabled(False),
                 "/api/speech/stop": ws.speaker.stop,
                 "/api/speech/test": ws.speaker.test,
+                "/api/wake/on": ws.wake.start,
+                "/api/wake/off": ws.wake.stop,
             }
             try:
                 status, out = actions[path]()

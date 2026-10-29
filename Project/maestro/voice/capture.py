@@ -112,13 +112,21 @@ class VoiceCapture:
         self.started_at = None
         self.elapsed = 0.0
 
-    def _default_ears(self):
-        """The real microphone, sharing one WhisperTranscriber."""
-        from maestro.voice.ears import MicEars, WhisperTranscriber
+    def shared_transcriber(self):
+        """The one WhisperTranscriber the workspace uses, so the speech model loads once
+        (push-to-talk and "Hey Maestro" never use the microphone at the same time).
+        """
+        from maestro.voice.ears import WhisperTranscriber
 
         if self._transcriber is None:
             self._transcriber = WhisperTranscriber()
-        return MicEars(transcriber=self._transcriber)
+        return self._transcriber
+
+    def _default_ears(self):
+        """The real microphone, sharing one WhisperTranscriber."""
+        from maestro.voice.ears import MicEars
+
+        return MicEars(transcriber=self.shared_transcriber())
 
     def _model_info(self) -> tuple[str, bool]:
         """The configured Whisper model's short name, and whether it is loaded yet."""

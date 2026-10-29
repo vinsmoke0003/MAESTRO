@@ -275,6 +275,7 @@
     <div class="pills" role="status" aria-live="polite">
       <span class="pill off" id="st-engine"><i class="dot"></i><span>Connecting…</span></span>
       <span class="pill off" id="st-audit"><i class="dot"></i><span>Audit log …</span></span>
+      <span class="pill run hidden" id="st-wake"><i class="dot"></i><span>Listening for “Hey Maestro”</span></span>
     </div>
   </header>
 
@@ -475,6 +476,23 @@
     </div>
 
     <div class="card" style="margin-top:14px">
+      <h2>Hey Maestro</h2>
+      <div class="setting">
+        <div class="label"><b>Listen for "Hey Maestro"</b>
+          <span>Say "Hey Maestro" and your request. MAESTRO fills the Assistant box and shows the
+            plan; nothing runs until you approve it.</span></div>
+        <button id="btn-wake-toggle" role="switch" aria-checked="false"
+                aria-label="Listen for Hey Maestro" disabled>Off</button>
+      </div>
+      <div class="meter" aria-hidden="true"><i id="wake-level" style="width:0"></i></div>
+      <p class="muted small" id="wake-status" role="status" aria-live="polite">Checking…</p>
+      <p class="muted small">Privacy: the microphone stays on while this is on, and the top bar
+        says so on every page. Only sentences that start with "Maestro" are used; everything
+        else it hears is discarded at once, never shown, saved or sent. It pauses while MAESTRO
+        is speaking. Off by default, and off again every time MAESTRO starts.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
       <h2>Spoken replies</h2>
       <div class="setting">
         <div class="label"><b>Read results aloud</b>
@@ -581,7 +599,7 @@ function go() {
   $('page-lede').textContent = PAGES[name][1];
   if (name === 'activity' || name === 'settings') refreshSide();
   if (name === 'connections') { loadIntegrations(); watchFlow(); }
-  if (name === 'voice') { watchVoice(); loadSpeech(); }
+  if (name === 'voice') { watchVoice(); loadSpeech(); watchWake(); }
 }
 
 // ---- status indicators -------------------------------------------------------
@@ -945,7 +963,7 @@ function renderVoice(v) {
   vState = v.state;
   const [label, cls] = V_LABELS[v.state] || V_LABELS.failed;
   pill('voice-state', cls, label);
-  $('btn-voice-start').disabled = !v.available || V_BUSY.includes(v.state);
+  $('btn-voice-start').disabled = !v.available || V_BUSY.includes(v.state) || wakeOn;
   $('btn-voice-stop').disabled = !['starting', 'listening'].includes(v.state);
   const fmt = (n) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   $('voice-elapsed').textContent = V_BUSY.includes(v.state) || v.state === 'transcript_ready'
@@ -1038,6 +1056,88 @@ async function useVoiceText() {
   $('instruction').focus();
 }
 
+// ---- "Hey Maestro" (requests it hears are only previewed; the user approves) ------
+const W_LABELS = {
+  off: 'Off: the microphone is not listening.',
+  starting: 'Starting the microphone…',
+  listening: 'Listening for “Hey Maestro”…',
+  hearing: 'Hearing speech…',
+  transcribing: 'Working out what was said…',
+  stopping: 'Turning off…',
+  failed: 'Stopped.',
+  unavailable: 'Voice input is not installed.',
+};
+let wakeOn = false;
+let wakeSeen = null;          // id of the last heard request already shown
+
+function renderWake(w) {
+  const wasOn = wakeOn;
+  wakeOn = !!w.enabled || w.state === 'starting' || w.state === 'stopping';
+  if (wakeOn !== wasOn) watchVoice();     // re-decide Start recording (one mic user at a time)
+  const on = !!w.enabled || w.state === 'starting';
+  $('btn-wake-toggle').disabled = !w.available || w.state === 'stopping';
+  $('btn-wake-toggle').setAttribute('aria-checked', String(on));
+  $('btn-wake-toggle').textContent = on ? 'On' : 'Off';
+  $('btn-wake-toggle').className = on ? 'primary' : '';
+  $('wake-level').style.width = (['listening', 'hearing'].includes(w.state) ? (w.level_pct || 0) : 0) + '%';
+  // While listening or after a failure the server's message says it best; in the
+  // passing states (starting, hearing, transcribing, stopping) the short label does.
+  const label = W_LABELS[w.state] || '';
+  const text = ['listening', 'failed'].includes(w.state) && w.message ? w.message : label;
+  $('wake-status').textContent = text + (w.planning ? ' Preparing the plan…' : '');
+  show('st-wake', wakeOn);
+  const id = w.event ? w.event.id : 0;
+  if (wakeSeen === null) {
+    wakeSeen = id;                        // requests heard before this page opened stay old
+  } else if (id !== wakeSeen) {
+    wakeSeen = id;
+    showHeard(w.event);                   // a new request: fill the box and preview it
+  }
+}
+
+// A heard request: fill the box and show its preview, exactly as if typed and previewed.
+function showHeard(ev) {
+  $('instruction').value = ev.text;
+  location.hash = '#assistant';
+  go();
+  const t = ev.turn || {};
+  show('card-progress', false);
+  if (t.status === 'busy' || !t.actions) {
+    show('card-verdict', true);
+    $('verdict').innerHTML = `<div class="note">${esc(t.message || 'Could not plan that request.')}</div>`;
+    return;
+  }
+  renderTurn(t);
+  refreshSide();
+}
+
+let wakePolling = false;
+async function watchWake() {
+  if (wakePolling) return;
+  wakePolling = true;
+  try {
+    for (;;) {
+      let w;
+      try { w = await api('/api/wake/status'); }
+      catch { w = {state: 'failed', available: false, message: 'MAESTRO could not be reached.'}; }
+      renderWake(w);
+      if (!w.enabled && !['starting', 'stopping'].includes(w.state)) break;
+      await new Promise(res => setTimeout(res, 700));
+    }
+  } finally { wakePolling = false; }
+}
+
+async function toggleWake() {
+  const on = $('btn-wake-toggle').getAttribute('aria-checked') === 'true';
+  $('btn-wake-toggle').disabled = true;
+  let r;
+  try { r = await protectedPost(on ? '/api/wake/off' : '/api/wake/on'); }
+  catch { r = {error: 'MAESTRO could not be reached.'}; }
+  if (r.error) { $('wake-status').textContent = r.error; $('btn-wake-toggle').disabled = false; return; }
+  renderWake(r);
+  watchWake();
+}
+
 // ---- spoken replies (the server speaks its own text; the page only switches it) --
 function renderSpeech(sp) {
   const on = !!sp.enabled;
@@ -1128,6 +1228,7 @@ async function boot() {
     if (s && (s.previewed || s.pending)) renderTurn(s.previewed || s.pending);
   }
   setInterval(heartbeat, 3000);
+  watchWake();                          // shows the top-bar indicator if listening is on
 }
 
 $('btn-plan').onclick = plan;
@@ -1150,6 +1251,7 @@ $('btn-voice-discard').onclick = discardVoice;
 $('btn-speech-toggle').onclick = toggleSpeech;
 $('btn-speech-test').onclick = () => speechAction('/api/speech/test');
 $('btn-speech-stop').onclick = () => speechAction('/api/speech/stop');
+$('btn-wake-toggle').onclick = toggleWake;
 $('instruction').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) plan(); });
 $('clarify-answer').addEventListener('keydown', e => { if (e.key === 'Enter') answer(); });
 window.addEventListener('hashchange', go);
